@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>URCHIN</title>
+    <style>
+    </style>
+</head>
+<body>
+
+    <div class="parentWrap">
+        <div class="parent">
+            <div class="logo">
+                <div>
+                  <img src="./images/URCHIN Logo.png" alt="">
+                </div>
+              </div>
+
+              <div id="tabs">
+                <button class="tablinks active" >Settings</button>
+                <button class="tablinks" >Actions</button>
+                <button class="tablinks">Schedules</button>
+            </div>
+
+            <div class="tabContent active" id="settings">
+                <form action="" id="form">
+                    <div class="formGroup">
+                      
+                        <div class="inputDiv">
+                          <label for="userId" id="user_id_label">User ID</label><br>
+                          <input type="text" id= 'userId_field' name="userId">
+                        </div>
+                        
+                      </div>
+
+                      <div class="formGroup">
+                        <div class="inputDiv">
+                          <label for="text_field" id="text_label">Task</label><br>
+                          <input type="text" id= 'text_field' name="text_field">
+                          
+                        </div>
+                        
+                      </div>
+
+                      <div class="button-holder">
+                        <button type="submit" class="content-button" id="saveIdBtn">
+                          Save
+                        </button>
+                        <button id="resetBtn">Reset</button>
+                      </div>
+                </form>
+            </div>
+
+            <div class="tabContent" id="actions">
+                Actions
+            </div>
+
+            <div class="tabContent" id="schedules">
+                Schedules
+            </div>
+
+
+        </div>
+    </div>
+    
+</body>
+<script src="popup.js"></script>
+</html>

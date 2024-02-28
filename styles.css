@@ -1,0 +1,182 @@
+html{
+    height:420px;
+    padding: 0;
+    margin: 0;
+    width: 380px;
+    border-right: 3px solid black;
+    border-bottom: 1px solid black;
+  }
+  body{
+    border-bottom: 3px solid black;
+    display: flex;
+    justify-content: center;
+    overflow: scroll;
+    height:410px;
+    width: 105%;
+    position: relative;
+    right:18px;
+    background-color: white;
+  }
+
+  .parentWrap{
+    background-color: white; 
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    height:100%;
+    width: 380px;
+           
+  }
+  .parent{
+    background-color: white;
+    position: relative;
+    padding: 10px;
+    padding-top: 3px;
+    height:95%;
+    width: 100%;
+
+}
+
+.logo{
+    height: 36px;
+    width:100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.logo div{
+  width:135px;
+}
+.logo img{
+  max-width: 100%;
+}
+
+#tabs{
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+#tabs>button{
+    height:28px;
+    border:none;
+    outline:none;
+    background-color: white;
+    animation: .5s;
+    font-weight: 600;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 3px;
+    margin-bottom: 8px;
+}
+#tabs >button.active {
+border-bottom: #FAB700 3px solid;
+}
+
+.tabContent{
+    display: none;
+    padding-top:10px;
+    max-height:380px;
+    overflow-y:auto;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+.tabContent.active{
+    display: block;
+    padding:10px;
+}
+
+.formGroup{
+    position: relative;
+  }
+  .formGroup label{
+    position: absolute;
+    top:16px;
+    left:8px;
+    background-color: white;
+    color: black;
+    font-weight: 800;
+    animation: top .8s;
+    /* z-index: 100; */
+  }
+  .formGroup label.active{
+    top:-7px;
+    color: #FAB802;
+  }
+
+  input{
+    padding-left: 10px;
+    
+  }
+  input,select{
+    animation: all .4s ease-out;
+    width:100%;
+    height:38px;
+    border: 3px solid #212121;
+    border-radius: 4px;
+    outline: none;
+    margin-bottom: 8px;
+    padding-right: 10px;
+    /* box-shadow: 5px 5px #212121; */
+  }
+  select{
+    cursor: pointer;
+    position: relative;
+    transition: all .2s;
+    padding-left: 8px;
+    height:45px;
+  }
+  input:focus{
+    border: 3px solid #005FCC;
+    
+  }
+  .inputDiv{
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    
+  }
+  #saveIdBtn,#resetBtn{
+    width:20%;
+    height:32px;
+    background-color: #FAB700;
+    color: #212121;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+    margin-bottom: 10px;
+    margin-top: 10px;
+    animation: .3s;
+    font-weight: 600;
+    font-size: 16px;
+    float: right;
+    /* position: relative;
+    right:5px; */
+  }
+  .button-holder{
+    display: flex;
+    justify-content: flex-start;
+    padding:0px ;
+    align-items: center;
+  }
+  .button-holder button{
+    margin-right: 10px;
+  }
+  form  .button-holder{
+    /* justify-content: space-between; */
+  }
+  .button-holder#twoBtns{
+    justify-content: center;
+  }
+  #userId_field::placeholder{
+    font-weight: bolder;
+    color: black;
+    font-size: 13px;
+  }
+  #text_field::placeholder{
+    font-weight: bolder;
+    color: black;
+    font-size: 13px;
+  }
