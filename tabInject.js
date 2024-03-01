@@ -4,11 +4,14 @@ s.src = chrome.runtime.getURL('injected.js');
 s.async = true;
 s.referrerpolicy='same-origin'
 
-chrome.storage.local.get('tabRules',res=>{
-    if(res.tabRules){
+chrome.storage.local.get('tabRuleObj',res=>{
+    if(res.tabRuleObj){
         console.log();
-        let {tabRules}=res
-        localStorage.setItem("tabRules",JSON.stringify(tabRules))
+        let {tabRuleObj}=res
+        localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj))
+        localStorage.setItem("interceptArr",JSON.stringify([]))
+        localStorage.setItem("sentIntercepted",JSON.stringify([]))
+        
         s.onload = function() {
             this.remove();
         };

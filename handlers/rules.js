@@ -1,3 +1,44 @@
+chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+    if(request.tabIntercepted){
+        const {tabIntercepted}=request
+        sendRuleResult(tabIntercepted)
+    }
+})
+
+const sendRuleResult=(resObj)=>{
+    const {name,objectId,response,webhook_destination,timestamp,url}=resObj
+
+    const body={response,url}
+
+    let params={
+        user:userId,
+        task:taskId,
+        name,
+        objectId
+    }
+
+    let finalUrl=webhook_destination+'?'+new URLSearchParams(params)
+
+
+
+    fetch(finalUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    }).then(res=>{
+        if(res.status==200){
+            console.log('Successfully sent intercepted response');
+        }else{
+            console.log("Could not send intercepted response");
+        }
+        
+    })
+    .catch(err=>{
+        console.log("Could not send intercepted response");
+        // console.log(err.message);
+    })
+}
+
 
 chrome.webRequest.onCompleted.addListener((dets)=>{
 
@@ -5,15 +46,17 @@ chrome.webRequest.onCompleted.addListener((dets)=>{
      
     if(dets.initiator){
         if(!(dets.initiator.includes('chrome-extension'))){
-            if(tabRules[0]){
+            const {rules}=tabRuleObj
+            if(rules && rules[0]){
                 let match=false
-                tabRules.forEach(async ruleUrl=>{
+                rules.forEach(async ruleUrl=>{
                     if(new RegExp(ruleUrl).test(url)){
                         match=true
                     } 
                 })
                 if(match){
-                    //Trigger harvest
+                    const {tabId}=dets
+                    chrome.tabs.sendMessage(tabId,'check intercepted')
                 }
 
             }
@@ -24,4 +67,5 @@ chrome.webRequest.onCompleted.addListener((dets)=>{
     
     
 },{urls:["<all_urls>"]},["responseHeaders","extraHeaders"])
+
 

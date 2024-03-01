@@ -22,13 +22,10 @@
         },
         "default_popup":"popup.html"
     },
-    "content_scripts":[{
-      "matches":["<all_urls>"],
-      "js":["script.js"]
-      },
+    "content_scripts":[
       {
         "matches":["<all_urls>"],
-        "js":["jquery.js"],
+        "js":["jquery.js","script.js"],
         "run_at": "document_start",
         "all_frames": true
         }]

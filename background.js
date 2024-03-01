@@ -1,8 +1,27 @@
 importScripts(
     "./handlers/tabs.js",
-    "./handlers/control.js")
+    "./handlers/control.js",
+    "./handlers/rules.js",
+    "./handlers/actions.js")
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+    if(request==='check my actions'){
+        chrome.storage.local.get('tabActions',res=>{
+            if(res.tabActions){
+                let tabActions=res.tabActions
+                let this_tab_action=tabActions.filter(item=>item.tabId==sender.tab.id)
+                if(this_tab_action && this_tab_action[0]){
+                    chrome.tabs.sendMessage(sender.tab.id,{tab_action:true,tabId:sender.tab.id})
+                }
+            }
+        })
+    }
+    if(request.fdbk){
+        
+    }
+    if(request.stopper_result){
+
+    }
     if(request.state){
         state=request.state  
         chrome.storage.local.set({state:state})
@@ -22,13 +41,13 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
     }
     if(request.setTask){
         if(request.setTask!=='REMOVED'){
-            task=request.setTask
-            chrome.storage.local.set({task:task})
+            taskId=request.setTask
+            chrome.storage.local.set({taskId:taskId})
         }
     }
 })
 
-let userId, state, autoState, task
+let userId, state, autoState, taskId
 let AUTOS_FREQ,AUTOS_SIZE
 
 let checkUserId=()=>{
@@ -63,11 +82,11 @@ const initiateExtension=async(action)=>{
     .then(async response=>{
         let res= await response.json()
         if(res[0]){
-            console.log(res[0]);
             const {autos_batch_size,autos_frequency}=res[0]
             AUTOS_FREQ=autos_frequency || 5
             AUTOS_SIZE=autos_batch_size || 10
             setTabs()
+            // initTabs()
         }else{
             console.log(`No settings for ${userId}`,res);
         }

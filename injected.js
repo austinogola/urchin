@@ -5,9 +5,11 @@
 
     
     
-    let rules=JSON.parse(st.getItem('tabRules'))
+    let tabRuleObj=JSON.parse(st.getItem('tabRuleObj'))
 
-    console.log(rules);
+    const {rules,objectId,name,webhook_destination}=tabRuleObj
+
+    // console.log(rules);
 
     var originalFetch = window.fetch
     var send = XHR.send;
@@ -30,8 +32,20 @@
         if(match){
             originalFetch.apply(this, arguments).then(async res=>{
                 let response=await res.json()
-                console.log(url);
-                console.log(response);
+                let interceptObj={
+                    objectId,
+                    name,
+                    response,
+                    url,
+                    webhook_destination,
+                    timestamp :new Date().getTime()
+                }
+                let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
+                let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
+                prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                prevInterceptArr.push(interceptObj)
+                console.log(prevInterceptArr);
+                st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
             })
             return
         }
@@ -55,8 +69,19 @@
                 if(response.text && typeof response.text === 'function'){
                     const text = await response.text();
                     const parsedResponse=JSON.parse(text);
-                    console.log(url);
-                    console.log(parsedResponse);
+                    let interceptObj={
+                        objectId,
+                        name,
+                        response:parsedResponse,
+                        url,
+                        webhook_destination,
+                        timestamp :new Date().getTime()
+                    }
+                    let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
+                    let sentIntercepts=JSON.parse(st.getItem('sentIntercepted'))
+                    prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                    prevInterceptArr.push(interceptObj)
+                    st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
                 }
             }
             

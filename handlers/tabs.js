@@ -29,35 +29,105 @@ const getTabs=(test)=>{
     })
 
 }
+const initTabs=async()=>{
+    let tabsArr=await getTabs()
+    await runTabs(tabsArr)
+    
+}
 
 const setTabs=()=>{
     return new Promise(async(resolve, reject) => {
-        let autosArr=await getTabs()
-        runTabs(autosArr)
         
-        
+        chrome.alarms.clearAll()
+        chrome.alarms.create(`startTabs`,{
+            delayInMinutes:AUTOS_FREQ,
+            periodInMinutes:AUTOS_FREQ
+        }) 
     })
 }
-const tabRules=[]
+
+chrome.alarms.onAlarm.addListener(async(Alarm)=>{
+    if(Alarm.name=='startTabs'){
+        initTabs()
+    }
+})
+
+let tabActions=[]
+let tabRuleObj={}
+
+const cyclicRunTab=(parsedAction,tabId)=>{
+    return new Promise(async(resolve, reject) => {
+        // console.log(parsedAction,tabId);
+        const {action_array,index,iteration,repeat,stop_if_present}=parsedAction
+        let remaining_reps=repeat
+        chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+            if(request.fdbk){
+                sendMessageToTab(tabId,{check_stopper:true,stopper:stop_if_present})
+                // chrome.runtime.sendMessage(tabId,{check_stopper:true,stopper:stop_if_present})
+
+            }
+            if(request.stopper_result){
+                if(request.stopper_result=='NOT FOUND'){
+                    if(remaining_reps>0){
+                        remaining_reps-=1
+                        // let ww=await sendMessageToTab(tabId,{runString:action_array})
+                        // chrome.runtime.sendMessage(tabId,{runString:action_array})
+
+                    }else{
+                        resolve('REPS')
+                    }
+                }else{
+                    resolve('STOPPER')
+                }
+                
+            }
+        })
+       
+        remaining_reps-=1
+        let ww=await sendMessageToTab(tabId,{runString:action_array})
+        // chrome.runtime.sendMessage(tabId,{runString:action_array})
+        
+     
+    })
+}
+
+const updateTab=async(id)=>{
+    let ob={
+        complete:true
+    }
+    let updateUrl=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs/${id}`
+
+    fetch(updateUrl,{
+        method:'PUT',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify(ob)
+    })
+
+}
 const runTabs=(arr)=>{
-    return new Promise((resolve, reject) => {
+    return new Promise(async(resolve, reject) => {
         if(Array.isArray(arr)){
             for (let i = 0; i < arr.length; i++) {
                 const tabObj = arr[i];
-                tabRules=tabObj.rules
-                chrome.storage.local.set({tabRules})
+                const {rules,objectId,name,actions,webhook_destination}=tabObj
+                tabRuleObj={rules,objectId,name,webhook_destination}
+                chrome.storage.local.set({tabRuleObj})
 
-                chrome.scripting.registerContentScripts([{
+                await chrome.scripting.registerContentScripts([{
                     id: tabObj.objectId,
                     js: ["tabInject.js"],
                     matches: ["<all_urls>"],
                     runAt: "document_start"
                 }])
-                .then(async() => {
-                    let newTab=await openNewTab(tabObj.target_page,true)
-                    
-                })
-                
+                let newTab=await openNewTab(tabObj.target_page,true)
+                let parsedAction=await parseAction(actions)
+                parsedAction.tabId=newTab
+                let cR=await cyclicRunTab(parsedAction,newTab)
+                console.log(cR);
+                // await chrome.scripting.unregisterContentScripts(objectId);
+                // updateTab(objectId)
                 
             }
 
@@ -66,3 +136,33 @@ const runTabs=(arr)=>{
         }
     })
 }
+
+
+const sendMessageToTab =(tabId, message, maxRetries = 10, retryInterval = 1500) =>{
+    
+    return new Promise((resolve, reject) => {
+        let retries = 0;
+
+        const sendMessageAttempt = () => {
+            if (retries >= maxRetries) {
+            //   console.log(`Maximum retries (${maxRetries}) reached. Message not sent.`);
+              resolve('FAILED')
+              return;
+            }
+        
+            chrome.tabs.sendMessage(tabId, message, response => {
+              if (chrome.runtime.lastError) {
+                // console.error(chrome.runtime.lastError.message);
+                retries++;
+                setTimeout(sendMessageAttempt, retryInterval);
+              }
+              else{
+                  resolve('SENT')
+                  return
+              }
+            });
+        };
+
+        sendMessageAttempt();
+    })
+  }
