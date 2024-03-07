@@ -1,11 +1,33 @@
+const othee=()=>{
+    let tt=localStorage.getItem('urlsToBeMade')
+    console.log(tt);
+}
+
 (async function(xhr,win,st) {
 
     var XHR = XMLHttpRequest.prototype;
     let WIND=window;
+    let tRO=st.getItem('tabRuleObj')
+    let tabRuleObj=tRO=='undefined'?{}:JSON.parse(tRO)
+    
+    let uTBM=st.getItem('urlsToBeMade')
+    let urlsToBeMade=uTBM=='undefined'?[]:JSON.parse(uTBM)
 
+    let uTBR=st.getItem('urlsToBeReturned')
+    let urlsToBeReturned=uTBR=='undefined'?[]:JSON.parse(uTBR)
     
+    let sUTBM=st.getItem('salesUrlToBeMade')
+    let salesUrlToBeMade=sUTBM=='undefined'?[]:JSON.parse(sUTBM)
+
+    let sUTBR=st.getItem('salesUrlsToBeReturned')
+    let salesUrlsToBeReturned=sUTBR=='undefined'?[]:JSON.parse(sUTBR)
+
+    let snH=st.getItem('SNHeaders')
+    let SNHeaders=snH=='undefined'?[]:JSON.parse(snH)
+
+    let jtoken=st.getItem('jtoken')
+   
     
-    let tabRuleObj=JSON.parse(st.getItem('tabRuleObj'))
 
     const {rules,objectId,name,webhook_destination}=tabRuleObj
 
@@ -13,22 +35,28 @@
 
     var originalFetch = window.fetch
     var send = XHR.send;
+    var open = XHR.open;
 
     WIND.fetch=function(callback){
+       
+        
         
         let url =typeof(callback)=='string'?callback:callback.url
+        console.log();
         
         if(url.includes('chrome-extension://')){
             return
         }
-       
+        
         let match=false
-        rules.forEach(async ruleUrl=>{
-            if(new RegExp(ruleUrl).test(url)){
-                match=true
-            } 
-        })
-
+        if(rules){
+            rules.forEach(async ruleUrl=>{
+                if(new RegExp(ruleUrl).test(url)){
+                    match=true
+                } 
+            })
+        }
+        
         if(match){
             originalFetch.apply(this, arguments).then(async res=>{
                 let response=await res.json()
@@ -44,7 +72,6 @@
                 let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
                 prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
                 prevInterceptArr.push(interceptObj)
-                console.log(prevInterceptArr);
                 st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
             })
             return
@@ -53,18 +80,105 @@
 
         return originalFetch.apply(this, arguments);
     }
+        XHR.open=async function (method,URL,oy) {
+            
+           
+            return open.apply(this, arguments);  
+        }
 
-    XHR.send = function(postData) {
+    XHR.send = async function(postData) {
+        
         this.addEventListener('load', async function() {
             const {responseURL,responseType,response}=this
             let url=responseURL
+            if(salesUrlToBeMade[0]){
+                if(url.toLowerCase().includes('sales-api')){
+                    let targetObj=salesUrlToBeMade.shift()
+                    let URL=targetObj.url
+                    var mlr = new XMLHttpRequest();
+                    mlr.onreadystatechange = function() {
+                        if (mlr.readyState === XMLHttpRequest.DONE) {
+                        if (mlr.status === 200) {
+                            const toBeReturnedObj={
+                                url:URL,
+                                type:targetObj.type,
+                                response:mlr.responseText
+                            }
+                            salesUrlsToBeReturned.push(toBeReturnedObj)
+                            localStorage.setItem("salesUrlsToBeReturned",JSON.stringify(salesUrlsToBeReturned))
+                            
+                        } else {
+                            const toBeReturnedObj={
+                                url:URL,
+                                type:targetObj.type,
+                                response:mlr.status
+                            }
+                            salesUrlsToBeReturned.push(toBeReturnedObj)
+                            localStorage.setItem("salesUrlsToBeReturned",JSON.stringify(salesUrlsToBeReturned))
+                        }
+                        }
+                    };
+                    mlr.open('GET', URL, true);
+                    mlr.withCredentials = true
+                    SNHeaders.forEach(val=>{
+                        mlr.setRequestHeader(`${val.name}`, val.value);
+                    })
+                    
+                    // mlr.send();
+                    localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade))
+                }
+            }
+            if(urlsToBeMade[0]){
+                if(url.toLowerCase().includes('voyager')){
+                    let hd=this.getAllResponseHeaders()
+                    console.log(hd);
+                    let targetObj=urlsToBeMade.shift()
+                    let URL=targetObj.url
+
+
+                    var mlr = new XMLHttpRequest();
+                    mlr.onreadystatechange = function() {
+                        if (mlr.readyState === XMLHttpRequest.DONE) {
+                        if (mlr.status === 200) {
+                            const toBeReturnedObj={
+                                url:URL,
+                                type:targetObj.type,
+                                response:mlr.responseText
+                            }
+                            urlsToBeReturned.push(toBeReturnedObj)
+                            localStorage.setItem("urlsToBeReturned",JSON.stringify(urlsToBeReturned))
+                            
+                        } else {
+                            const toBeReturnedObj={
+                                url:URL,
+                                type:targetObj.type,
+                                response:mlr.status
+                            }
+                            urlsToBeReturned.push(toBeReturnedObj)
+                            localStorage.setItem("urlsToBeReturned",JSON.stringify(urlsToBeReturned))
+                        }
+                        }
+                    };
+                    mlr.open('GET', URL, true);
+                    mlr.withCredentials = true
+                    mlr.setRequestHeader('csrf-token', jtoken);
+                    mlr.send();
+                    localStorage.setItem("urlsToBeMade",JSON.stringify(urlsToBeMade))
+                    
+                }
+    
+            }
+            
 
             let match=false
-            rules.forEach(async ruleUrl=>{
-                if(new RegExp(ruleUrl).test(url)){
-                    match=true
-                } 
-            })
+            if(rules){
+                rules.forEach(async ruleUrl=>{
+                    if(new RegExp(ruleUrl).test(url)){
+                        match=true
+                    } 
+                })
+            }
+            
             if(match){
                 if(response.text && typeof response.text === 'function'){
                     const text = await response.text();

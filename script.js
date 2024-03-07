@@ -1,5 +1,28 @@
 let received_tab_action=false
 chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
+    if(request==='ready?'){
+        sendResponse('ready')
+    }
+    if(request.getSales){
+        sendResponse('getting sales')
+        const {length}=request
+        let salesUrlsToBeReturned=JSON.parse(localStorage.getItem('salesUrlsToBeReturned'))
+        if(salesUrlsToBeReturned.length>=length){
+            chrome.runtime.sendMessage({recipes:salesUrlsToBeReturned})
+        }
+        
+    }
+    if(request.getVoyager){
+        sendResponse('getting voyager')
+        const {length}=request
+        let urlsToBeReturned=JSON.parse(localStorage.getItem('urlsToBeReturned'))
+        console.log(urlsToBeReturned);
+        if(urlsToBeReturned.length>=length){
+            chrome.runtime.sendMessage({recipes:urlsToBeReturned})
+        }
+        
+        
+    }
     if(request.tab_action && !received_tab_action){
         sendResponse('Received')
         console.log(request);
@@ -17,12 +40,13 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
         })
     }
     if(request.runString){
-        sendResponse('Receivd')
-        runString(request.runString)
+        sendResponse('Running string')
+        let string_status=await runString(request.runString)
+        chrome.runtime.sendMessage({string_status})
 
     }
     if(request.check_stopper){
-        sendResponse('Receivd')
+        sendResponse('Checking Stopper')
         const {stopper}=request
         let target=await loadSelector(stopper)
         if(target==null){
@@ -167,47 +191,53 @@ const  loadSelector=async(selector,all)=> {
 
 let started_actions=false
 const runString=async(action_array)=>{
-    for (let i = 0; i < action_array.length; i++) {
-        const itemArr = action_array[i].split(' ')
-        if(itemArr.includes('wait')){
-            let length=parseFloat(itemArr[1])
-            console.log(`Waiting ${length}`);
-            await sleep(length*1000)
-            console.log('waited')
-        }
-        else if(itemArr.includes('click')){
-            let target=itemArr[1]
-            let targ=await loadSelector(target)
-            if(targ!=null){
-                targ.click()
+    return new Promise(async(resolve, reject) => {
+        for (let i = 0; i < action_array.length; i++) {
+            const itemArr = action_array[i].split(' ')
+            console.log(itemArr);
+            if(itemArr.includes('wait')){
+                let length=parseFloat(itemArr[1])
+                console.log(`Waiting ${length}`);
+                await sleep(length*1000)
+                console.log('waited')
             }
-            
-            
-        }
-        else if(itemArr.includes('scroll')){
-            let target=itemArr[1]
-            let depth=parseInt(itemArr[2])
-            if(target=='window'){
-                console.log('Scrolling window');
-                window.scrollBy({top:depth,behavior:'smooth'})
-            }else{
+            else if(itemArr.includes('click')){
+                let target=itemArr[1]
                 let targ=await loadSelector(target)
+                console.log('clicking', targ);
                 if(targ!=null){
-                    targ.scrollBy({top:depth,behavior:'smooth'})
+                    targ.click()
                 }
+                
+                
+            }
+            else if(itemArr.includes('scroll')){
+                let target=itemArr[1]
+                let depth=parseInt(itemArr[2])
+                if(target=='window'){
+                    console.log('Scrolling window');
+                    window.scrollBy({top:depth,behavior:'smooth'})
+                }else{
+                    let targ=await loadSelector(target)
+                    console.log('Scrolling',null);
+                    if(targ!=null){
+                        targ.scrollBy({top:depth,behavior:'smooth'})
+                    }
+                    
+                }
+                
+            }
+            else if(itemArr.includes('navigate')){
+                let url=itemArr[1]
+                window.location.href=url
+               
                 
             }
             
         }
-        else if(itemArr.includes('navigate')){
-            let target=itemArr[1]
-            console.log(itemArr);
-            
-        }
-        
-    }
-
-    chrome.runtime.sendMessage({fdbk:'DONE'})
+        resolve('DONE')
+    })
+   
 
 }
 const runActions=(act_ob,tabId)=>{

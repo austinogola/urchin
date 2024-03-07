@@ -180,3 +180,120 @@ border-bottom: #FAB700 3px solid;
     color: black;
     font-size: 13px;
   }
+
+  #statusDiv{
+    display: block;
+    padding:8px;
+    padding-top: 5px;
+    height: 140px;
+
+  }
+  #statusDiv div{
+    /* display: grid;
+    grid-template-columns: 60% 40%; */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #statusDiv button{
+    background-color: #FAB700;
+    
+  }
+  #statusDiv .extension{
+    position: relative;
+    margin-bottom: 5px;
+    /* border: 1px solid red; */
+    height: 40px;
+
+  }
+  #statusDiv .auto{
+    height: 40px;
+    margin-bottom: 5px;
+    /* border: 1px solid red; */
+  }
+  #statusDiv .extension p{
+   font-size: 17px;
+   font-weight: 600;
+
+  }
+  .flip{
+    width: 40px;
+    height:30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: baseline;
+  }
+  .flip div{
+    height:4px;
+    background-color: #000000;
+    display: flex;
+    align-items: center;
+    position: relative;
+    width:100%;
+  }
+  .flip span{
+    position: absolute;
+    /* left: 30px; */
+    right: 22px;
+    width:20px;
+    height:20px;
+    border-radius: 50%;
+    transition: all .3s;
+    background-color: white;
+    border:#000000 3px solid;
+    /* left: 0px; */
+  }
+  .flip span.active{
+    right: -4px;
+    background-color: #FAB700;
+    border:#FAB700 3px solid;
+    
+  }
+  .flip2{
+    width: 40px;
+    height:30px;
+    /* position: relative; */
+    cursor: pointer;
+    /* perspective: 1000px; */
+    display: flex;
+    align-items: center;
+    justify-content: baseline;
+    /* transform-style: preserve-3d;
+    cursor:pointer; */ 
+    /* position: relative; */
+  }
+
+  .flip2 div{
+    height:4px;
+    background-color: #000000;
+    display: flex;
+    align-items: center;
+    
+    position: relative;
+    /* border-radius: 50%; */
+    width:100%;
+    /* top: 11px;
+    left: 1px; */
+  }
+  .flip2 span{
+    position: absolute;
+    right: 22px;
+    width:20px;
+    height:20px;
+    border-radius: 50%;
+    transition: all .3s;
+    background-color: white;
+    border:#000000 3px solid;
+    /* left: 0px; */
+  }
+  .flip2 span.active{
+    right: -4px;
+    background-color: #FAB700;
+    border:#FAB700 3px solid;
+    
+  }
+  #statusDiv p{
+    font-size: 16px;
+    font-weight: 500;
+  }

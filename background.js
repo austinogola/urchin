@@ -2,7 +2,8 @@ importScripts(
     "./handlers/tabs.js",
     "./handlers/control.js",
     "./handlers/rules.js",
-    "./handlers/actions.js")
+    "./handlers/actions.js",
+    "./handlers/recipes.js")
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
     if(request==='check my actions'){
@@ -16,7 +17,10 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             }
         })
     }
-    if(request.fdbk){
+    if(request.recipe){
+        console.log(request);
+    }
+    if(request.string_status){
         
     }
     if(request.stopper_result){
@@ -47,8 +51,6 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
     }
 })
 
-let userId, state, autoState, taskId
-let AUTOS_FREQ,AUTOS_SIZE
 
 let checkUserId=()=>{
     return new Promise((resolve, reject) => {

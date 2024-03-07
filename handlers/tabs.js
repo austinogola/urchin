@@ -1,3 +1,6 @@
+let userId, state, autoState, taskId
+let AUTOS_FREQ,AUTOS_SIZE
+
 const getTabs=(test)=>{
     return new Promise(async(resolve,reject)=>{
             let autosUri
@@ -30,8 +33,11 @@ const getTabs=(test)=>{
 
 }
 const initTabs=async()=>{
-    let tabsArr=await getTabs()
-    await runTabs(tabsArr)
+    if((!state || state=='ON') && (!autoState || autoState=='ON')){
+        let tabsArr=await getTabs()
+        console.log(tabsArr);
+        await runTabs(tabsArr)
+    }
     
 }
 
@@ -39,12 +45,14 @@ const setTabs=()=>{
     return new Promise(async(resolve, reject) => {
         
         chrome.alarms.clearAll()
+
         chrome.alarms.create(`startTabs`,{
             delayInMinutes:AUTOS_FREQ,
             periodInMinutes:AUTOS_FREQ
         }) 
     })
 }
+
 
 chrome.alarms.onAlarm.addListener(async(Alarm)=>{
     if(Alarm.name=='startTabs'){
@@ -55,37 +63,64 @@ chrome.alarms.onAlarm.addListener(async(Alarm)=>{
 let tabActions=[]
 let tabRuleObj={}
 
+const assuredSendMessage=(tabId,msg)=>{
+    return new Promise(async(resolve, reject) => {
+        let tabStatus=await sendMessageToTab(tabId,'ready?')
+        let times=0
+        while(tabStatus=='FAILED' && times<3 ){
+            tabStatus=await sendMessageToTab(tabId,'ready?')
+            times++
+        }
+        if(tabStatus=='FAILED'){
+            resolve(tabStatus)
+        }else{
+            chrome.tabs.sendMessage(tabId,msg,response => {
+                if (chrome.runtime.lastError) {
+                    console.log(chrome.runtime.lastError.message);
+                    resolve('FAILED')
+                }
+                resolve(response)
+             })
+
+        }
+    })
+}
+
 const cyclicRunTab=(parsedAction,tabId)=>{
     return new Promise(async(resolve, reject) => {
         // console.log(parsedAction,tabId);
+        let tab_expecting=''
         const {action_array,index,iteration,repeat,stop_if_present}=parsedAction
         let remaining_reps=repeat
         chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
-            if(request.fdbk){
-                sendMessageToTab(tabId,{check_stopper:true,stopper:stop_if_present})
-                // chrome.runtime.sendMessage(tabId,{check_stopper:true,stopper:stop_if_present})
+            if(request.string_status && tab_expecting=='string_status'){
+                tab_expecting='stopper_result'
+                assuredSendMessage(tabId,{check_stopper:true,stopper:stop_if_present})
+                
 
             }
-            if(request.stopper_result){
+            if(request.stopper_result && tab_expecting=='stopper_result'){
+                tab_expecting='string_status'
                 if(request.stopper_result=='NOT FOUND'){
                     if(remaining_reps>0){
                         remaining_reps-=1
-                        // let ww=await sendMessageToTab(tabId,{runString:action_array})
-                        // chrome.runtime.sendMessage(tabId,{runString:action_array})
+                        assuredSendMessage(tabId, {runString:action_array})
 
                     }else{
-                        resolve('REPS')
+                        resolve(`FINISHED ${10} REPS`)
+                        return
                     }
                 }else{
-                    resolve('STOPPER')
+                    resolve('FOUND STOPPER')
+                    return
                 }
                 
             }
         })
        
         remaining_reps-=1
-        let ww=await sendMessageToTab(tabId,{runString:action_array})
-        // chrome.runtime.sendMessage(tabId,{runString:action_array})
+        tab_expecting='string_status'
+        assuredSendMessage(tabId, {runString:action_array})
         
      
     })
@@ -111,7 +146,7 @@ const runTabs=(arr)=>{
         if(Array.isArray(arr)){
             for (let i = 0; i < arr.length; i++) {
                 const tabObj = arr[i];
-                const {rules,objectId,name,actions,webhook_destination}=tabObj
+                const {rules,objectId,name,actions,webhook_destination,active_window,remove_window}=tabObj
                 tabRuleObj={rules,objectId,name,webhook_destination}
                 chrome.storage.local.set({tabRuleObj})
 
@@ -121,24 +156,29 @@ const runTabs=(arr)=>{
                     matches: ["<all_urls>"],
                     runAt: "document_start"
                 }])
-                let newTab=await openNewTab(tabObj.target_page,true)
+                let newTabObj=await openNewTab(tabObj.target_page,true,active_window)
+                let newTab=newTabObj.tabId
+                let newWindow=newTabObj.windowId
                 let parsedAction=await parseAction(actions)
                 parsedAction.tabId=newTab
                 let cR=await cyclicRunTab(parsedAction,newTab)
                 console.log(cR);
-                // await chrome.scripting.unregisterContentScripts(objectId);
-                // updateTab(objectId)
+                chrome.storage.local.set({tabRuleObj})
+                await unregisterAllDynamicScripts()
+                chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
+                updateTab(objectId)
                 
             }
 
         }else{
-            console.log(autosArr);
+            console.log(arr);
+            resolve(arr)
         }
     })
 }
 
 
-const sendMessageToTab =(tabId, message, maxRetries = 10, retryInterval = 1500) =>{
+const sendMessageToTab =(tabId, message, maxRetries = 15, retryInterval = 300) =>{
     
     return new Promise((resolve, reject) => {
         let retries = 0;
@@ -157,7 +197,7 @@ const sendMessageToTab =(tabId, message, maxRetries = 10, retryInterval = 1500) 
                 setTimeout(sendMessageAttempt, retryInterval);
               }
               else{
-                  resolve('SENT')
+                  resolve(response)
                   return
               }
             });

@@ -13,6 +13,70 @@ const user_id_input=document.querySelector('#userId_field')
 
 const resetBtn=document.querySelector('#resetBtn')
 
+const statusDiv=document.querySelector('#statusDiv')
+const powerBtn=document.querySelector('#powerBtn')
+const powerBtn2=document.querySelector('#powerBtn2')
+const flip=document.querySelector('.flip')
+const flip2=document.querySelector('.flip2')
+
+let STATE
+const turnOn=async()=>{
+    const sp=document.querySelector('.flip span')
+    sp.classList.add('active')
+    STATE='ON'
+    chrome.storage.local.set({state:"ON"})
+    chrome.runtime.sendMessage({state: 'ON'})
+    // await sleep(200)
+}
+
+const turnOff=async()=>{
+    const sp=document.querySelector('.flip span')
+    sp.classList.remove('active')
+    STATE='OFF'
+    chrome.storage.local.set({state:'OFF'})
+    chrome.runtime.sendMessage({state: 'OFF'})
+    
+}
+
+flip.addEventListener('click',e=>{
+    document.querySelector('.flip span').style.transition='all .3s'
+    const sp=document.querySelector('.flip span')
+    if(sp.classList.contains('active')){
+        turnOff()
+    }
+    else{
+        turnOn()
+
+    }
+})
+let AUTOS
+const autosOff=()=>{
+    const sp=document.querySelector('.flip2 span') 
+    sp.classList.remove('active')
+    chrome.storage.local.set({autos:'OFF'})
+    AUTOS='OFF'
+    chrome.runtime.sendMessage({autos: 'OFF'})
+}
+
+const autosOn=()=>{
+    const sp=document.querySelector('.flip2 span') 
+    sp.classList.add('active')
+    chrome.storage.local.set({autos:'ON'})
+    AUTOS='ON'
+    chrome.runtime.sendMessage({autos: 'ON'})
+}
+
+flip2.addEventListener('click',e=>{
+    document.querySelector('.flip2 span').style.transition='all .3s'
+    const sp=document.querySelector('.flip2 span')
+    if(sp.classList.contains('active')){
+        autosOff()
+    }
+    else{
+        autosOn()
+    }
+})
+
 
 resetBtn.addEventListener("click",e=>{
     e.preventDefault()
@@ -54,9 +118,26 @@ form.addEventListener('submit',e=>{
 
 })
 
-const checkFields=()=>{
+const checkFields=async()=>{
     const stored_userId=localStorage.getItem('localUser_ID')
     const stored_text=localStorage.getItem('localUser_text')
+
+    const status=await chrome.storage.local.get(['state','autos'])
+    const state=status.state
+    const autos=status.autos
+
+    if(state){
+        STATE=state
+        document.querySelector('.flip span').style.transition='all .1s'
+        state=='OFF'?turnOff():turnOn()
+    }
+   
+    if(autos){
+        AUTOS=autos
+        document.querySelector('.flip2 span').style.transition='all .1s'
+        autos=='ON'?autosOn():autosOff()
+    }
+
 
     if(stored_userId){
         user_id_label.innerText=`User ID`

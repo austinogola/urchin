@@ -4,13 +4,28 @@ s.src = chrome.runtime.getURL('injected.js');
 s.async = true;
 s.referrerpolicy='same-origin'
 
-chrome.storage.local.get('tabRuleObj',res=>{
-    if(res.tabRuleObj){
-        console.log();
-        let {tabRuleObj}=res
-        localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj))
+chrome.storage.onChanged.addListener(changes=>{
+    if(changes.SNHeaders){
+        localStorage.setItem("SNHeaders",JSON.stringify(changes.SNHeaders.newValue))
+    }
+})
+
+chrome.storage.local.get(['tabRuleObj','urlsToBeMade','jtoken','salesUrlToBeMade','SNHeaders'],res=>{
+    if(res.tabRuleObj || res.urlsToBeMade || res.salesUrlToBeMade){
+        console.log(res);
+        let {tabRuleObj,urlsToBeMade,jtoken,salesUrlToBeMade,SNHeaders}=res
+     
+
+        tabRuleObj?localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj)):null
+        urlsToBeMade?localStorage.setItem("urlsToBeMade",JSON.stringify(urlsToBeMade)):null
+        salesUrlToBeMade?localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade)):null
+        SNHeaders?localStorage.setItem("SNHeaders",JSON.stringify(SNHeaders)):null
+
         localStorage.setItem("interceptArr",JSON.stringify([]))
         localStorage.setItem("sentIntercepted",JSON.stringify([]))
+        localStorage.setItem("urlsToBeReturned",JSON.stringify([]))
+        localStorage.setItem("salesUrlsToBeReturned",JSON.stringify([]))
+        localStorage.setItem("jtoken",jtoken)
         
         s.onload = function() {
             this.remove();
