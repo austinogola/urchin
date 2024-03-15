@@ -1,6 +1,6 @@
 const parseAction=async(action)=>{
     return new Promise(async(resolve, reject) => {
-        const {flow,stop_if_present,repeat,stop_if_repeats}=action
+        const {flow,stop_if_present,repeat,stop_if_repeats,limit,max_reset}=action
         let fullArr=[]
         for (let i = 0; i < flow.length; i++) {
             const flowArr = flow[i];
@@ -13,8 +13,8 @@ const parseAction=async(action)=>{
             stop_if_present,
             stop_if_repeats,
             repeat,
-            iteration:0,
-            index:0
+            limit:limit?limit:1000,
+            max_reset:max_reset?max_reset:1000,
         })
     })
     

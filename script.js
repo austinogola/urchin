@@ -3,23 +3,62 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request==='ready?'){
         sendResponse('ready')
     }
+    if(request=='checkSS'){
+        if(isRunning===true){
+            sendResponse('still running')
+        }else{
+            sendResponse('done running') 
+        }
+    }
+    if(request.SNHeaders){
+        sendResponse('setting SN headers')
+        // console.log('setting SN headers');
+        localStorage.setItem("SNHeaders",JSON.stringify(request.SNHeaders))
+    }
+    if(request.resetLimit){
+        console.log(request);
+        sendResponse('setting tabLimit')
+        console.log('setting tabLimit');
+        localStorage.setItem('tabLimit',request.limit)
+    }
     if(request.getSales){
         sendResponse('getting sales')
         const {length}=request
-        let salesUrlsToBeReturned=JSON.parse(localStorage.getItem('salesUrlsToBeReturned'))
-        if(salesUrlsToBeReturned.length>=length){
-            chrome.runtime.sendMessage({recipes:salesUrlsToBeReturned})
-        }
+
+        let checkInterval=setInterval(() => {
+            let salesUrlsToBeReturned=JSON.parse(localStorage.getItem('salesUrlsToBeReturned'))
+            if(salesUrlsToBeReturned && salesUrlsToBeReturned[0]){
+                if(salesUrlsToBeReturned.length>=length){
+                    chrome.runtime.sendMessage({recipes:salesUrlsToBeReturned,type:'sales'})
+                    localStorage.setItem(salesUrlsToBeReturned,JSON.stringify([]))
+                    chrome.storage.local.set({salesUrlsToBeReturned:[]})
+                    clearInterval(checkInterval)
+                }
+            }
+        }, 500);
+
+        
+        
+        
         
     }
     if(request.getVoyager){
         sendResponse('getting voyager')
         const {length}=request
-        let urlsToBeReturned=JSON.parse(localStorage.getItem('urlsToBeReturned'))
-        console.log(urlsToBeReturned);
-        if(urlsToBeReturned.length>=length){
-            chrome.runtime.sendMessage({recipes:urlsToBeReturned})
-        }
+
+        let checkInterval=setInterval(() => {
+            let urlsToBeReturned=JSON.parse(localStorage.getItem('urlsToBeReturned'))
+            if(urlsToBeReturned && urlsToBeReturned[0]){
+                if(urlsToBeReturned.length>=length){
+                    chrome.runtime.sendMessage({recipes:urlsToBeReturned,type:'voyager'})
+                    localStorage.setItem(urlsToBeReturned,JSON.stringify([]))
+                    chrome.storage.local.set({urlsToBeReturned:[]})
+                    clearInterval(checkInterval)
+                }
+            }
+        }, 500);
+        
+        
         
         
     }
@@ -39,10 +78,17 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
             }
         })
     }
-    if(request.runString){
+    if(request.doString){
         sendResponse('Running string')
-        let string_status=await runString(request.runString)
+        const {doString,limit,stopper}=request
+        let string_status=await runString(doString,limit)
         chrome.runtime.sendMessage({string_status})
+        let target=await loadSelector(stopper)
+        if(target==null){
+            chrome.runtime.sendMessage({stopper_result:'NOT FOUND'})
+        }else{
+            chrome.runtime.sendMessage({stopper_result:'PRESENT'})
+        }
 
     }
     if(request.check_stopper){
@@ -61,61 +107,6 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request=='connect to me'){
         sendResponse('connecting to you')
         var port = chrome.runtime.connect({name: "action_port"});
-        port.onMessage.addListener(async(msg,port)=>{
-            if(msg.control){
-                
-                const {type,target,depth}=msg
-
-                if(type=='scroll'){
-                    console.log('scrolling');
-                    if(target=='window'){
-                        // window.scrollBy({top:depth,behavior:'smooth'})
-                        setTimeout(() => {
-                            console.log('Scrolling windows',depth);
-                            window.scrollBy({top:500,behavior:'smooth'})
-                            port.postMessage({performed:true,action:type})
-                            
-                        }, 1500);
-                        
-                    }else{
-                        let targ=await loadSelector(target)
-                        if(targ){
-                            console.log(targ);
-                            setTimeout(() => {
-                                console.log('Scrolling target',depth);
-                                targ.scrollBy({top:400,behavior:'smooth'})
-                                port.postMessage({performed:true,action:type})
-                                
-                            }, 1500);
-                            
-                            
-                        }else{
-                            port.postMessage({performed:false,action:type,reason:"target not found"})
-
-                        }
-                        
-                    }
-
-                }
-                else if(type=='click'){
-                    let targ=await loadSelector(target)
-                    console.log(targ);
-                    if(targ){
-                        // console.log(targ);
-                        setTimeout(() => {
-                            targ.click()
-                            port.postMessage({performed:true,action:type})
-                        }, 500);
-                        
-                    }else{
-                        console.log('Not found');
-                        port.postMessage({performed:false,action:type,reason:"target not found"})
-
-                    }
-                    
-                }
-            }
-        })
     }
     if(request.control){
         const {type,target}=request
@@ -130,23 +121,34 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
 
 
 const checkIntercepted=()=>{
-    let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
-    let interceptArr=JSON.parse(localStorage.getItem('interceptArr'))
-    if(interceptArr!==null){
-        interceptArr=interceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-        if(interceptArr[0]){
-            interceptArr.forEach(obj => {
-                chrome.runtime.sendMessage({tabIntercepted:obj})
-                sentIntercepts.push(obj.timestamp)
-            });
+    let times=0
+
+    let ourInterval=setInterval(() => {
+        if(times>3){
+            clearInterval(ourInterval)
+        }
+        else{
+            times=times+1
+            let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
+            let interceptArr=JSON.parse(localStorage.getItem('interceptArr'))
+            if(interceptArr!==null){
+                interceptArr=interceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                if(interceptArr[0]){
+                    interceptArr.forEach(obj => {
+                        chrome.runtime.sendMessage({tabIntercepted:obj})
+                        sentIntercepts.push(obj.timestamp)
+                    });
+                }
+                
+            }
+            localStorage.setItem("sentIntercepted",JSON.stringify(sentIntercepts))
         }
         
-    }
-    localStorage.setItem("sentIntercepted",JSON.stringify(sentIntercepts))
+    }, 500);
+    
 }
 
 const  loadSelector=async(selector,all)=> {
-    console.log('looking for',selector);
     var found = false;
     var raf;
     let el
@@ -156,11 +158,9 @@ const  loadSelector=async(selector,all)=> {
             // el=document.querySelectorAll(selector)
             el=$(selector)
             times+=1
-            console.log(el);
             
             if (el && el[0]) {
                 found = true;
-                // console.log('Found,',el);
                 cancelAnimationFrame(raf);
                 all?resolve(el):resolve(el[0])
                 
@@ -169,11 +169,11 @@ const  loadSelector=async(selector,all)=> {
                 }
                 
             
-            } else if(times>=5){
+            } else if(times>=3){
                 resolve(null)
             }
             else {
-                await sleep(500)
+                await sleep(300)
                 raf = requestAnimationFrame(check);
                 // console.log('Not found ',selector);
             }
@@ -190,51 +190,62 @@ const  loadSelector=async(selector,all)=> {
 }
 
 let started_actions=false
-const runString=async(action_array)=>{
+let isRunning = false;
+const runString=async(action_array,limit)=>{
+    isRunning=true
     return new Promise(async(resolve, reject) => {
         for (let i = 0; i < action_array.length; i++) {
-            const itemArr = action_array[i].split(' ')
-            console.log(itemArr);
-            if(itemArr.includes('wait')){
-                let length=parseFloat(itemArr[1])
-                console.log(`Waiting ${length}`);
-                await sleep(length*1000)
-                console.log('waited')
+            if(action_array[i]=='reset_rules_limit'){
+                chrome.runtime.sendMessage({message:'Resetting tab Limit'})
+                chrome.storage.local.set({tabLimit:limit})
+                localStorage.setItem('tabLimit',limit)
             }
-            else if(itemArr.includes('click')){
-                let target=itemArr[1]
-                let targ=await loadSelector(target)
-                console.log('clicking', targ);
-                if(targ!=null){
-                    targ.click()
+            else{
+                const itemArr = action_array[i].split(' ')
+                // console.log(itemArr);
+                if(itemArr.includes('wait')){
+                    let length=parseFloat(itemArr[1])
+                    // console.log(`Waiting ${length}`);
+                    await sleep(length*1000)
+                    // console.log('waited')
                 }
-                
-                
-            }
-            else if(itemArr.includes('scroll')){
-                let target=itemArr[1]
-                let depth=parseInt(itemArr[2])
-                if(target=='window'){
-                    console.log('Scrolling window');
-                    window.scrollBy({top:depth,behavior:'smooth'})
-                }else{
+                else if(itemArr.includes('click')){
+                    let target=itemArr[1]
                     let targ=await loadSelector(target)
-                    console.log('Scrolling',null);
+                    // console.log('clicking', targ);
                     if(targ!=null){
-                        targ.scrollBy({top:depth,behavior:'smooth'})
+                        targ.click()
+                    }
+                    
+                    
+                }
+                else if(itemArr.includes('scroll')){
+                    let target=itemArr[1]
+                    let depth=parseInt(itemArr[2])
+                    if(target=='window'){
+                        // console.log('Scrolling window');
+                        window.scrollBy({top:depth,behavior:'smooth'})
+                    }else{
+                        let targ=await loadSelector(target)
+                        // console.log('Scrolling',null);
+                        if(targ!=null){
+                            targ.scrollBy({top:depth,behavior:'smooth'})
+                        }
+                        
                     }
                     
                 }
-                
-            }
-            else if(itemArr.includes('navigate')){
-                let url=itemArr[1]
-                window.location.href=url
-               
-                
+                else if(itemArr.includes('navigate')){
+                    let url=itemArr[1]
+                    window.location.href=url
+                   
+                    
+                }
             }
             
+            
         }
+        isRunning=false
         resolve('DONE')
     })
    
@@ -256,38 +267,43 @@ const runActions=(act_ob,tabId)=>{
                         chrome.storage.local.set({tabActions:tts})
 
                         for (let i = index; i < action_array.length; i++) {
-                            const itemArr = action_array[i].split(' ')
-                            if(itemArr.includes('wait')){
-                                let length=parseFloat(itemArr[1])
-                                console.log(`Waiting ${length}`);
-                                await sleep(length*1000)
-                                console.log('waited')
-                            }
-                            else if(itemArr.includes('click')){
-                                let target=itemArr[1]
-                                let targ=await loadSelector(target)
-                                console.log(targ);
-                                targ.click()
-                                
-                            }
-                            else if(itemArr.includes('scroll')){
-                                let target=itemArr[1]
-                                let depth=parseInt(itemArr[2])
-                                if(target=='window'){
-                                    console.log('Scrolling window');
-                                    window.scrollBy({top:depth,behavior:'smooth'})
-                                }else{
+                            if(action_array[i]=='reset_rules_limit'){
+
+                            }else{
+                                const itemArr = action_array[i].split(' ')
+                                if(itemArr.includes('wait')){
+                                    let length=parseFloat(itemArr[1])
+                                    console.log(`Waiting ${length}`);
+                                    await sleep(length*1000)
+                                    console.log('waited')
+                                }
+                                else if(itemArr.includes('click')){
+                                    let target=itemArr[1]
                                     let targ=await loadSelector(target)
                                     console.log(targ);
-                                    targ.scrollBy({top:depth,behavior:'smooth'})
+                                    targ.click()
+                                    
                                 }
-                                
+                                else if(itemArr.includes('scroll')){
+                                    let target=itemArr[1]
+                                    let depth=parseInt(itemArr[2])
+                                    if(target=='window'){
+                                        console.log('Scrolling window');
+                                        window.scrollBy({top:depth,behavior:'smooth'})
+                                    }else{
+                                        let targ=await loadSelector(target)
+                                        console.log(targ);
+                                        targ.scrollBy({top:depth,behavior:'smooth'})
+                                    }
+                                    
+                                }
+                                else if(itemArr.includes('navigate')){
+                                    let target=itemArr[1]
+                                    console.log(itemArr);
+                                    
+                                }
                             }
-                            else if(itemArr.includes('navigate')){
-                                let target=itemArr[1]
-                                console.log(itemArr);
-                                
-                            }
+                            
                             
                         }
                     }

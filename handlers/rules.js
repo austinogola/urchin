@@ -40,7 +40,7 @@ const sendRuleResult=(resObj)=>{
 }
 
 
-chrome.webRequest.onCompleted.addListener((dets)=>{
+chrome.webRequest.onBeforeRequest.addListener((dets)=>{
 
     const {url}=dets
      
@@ -66,6 +66,6 @@ chrome.webRequest.onCompleted.addListener((dets)=>{
     }
     
     
-},{urls:["<all_urls>"]},["responseHeaders","extraHeaders"])
+},{urls:["<all_urls>"]},["requestBody","extraHeaders"])
 
 

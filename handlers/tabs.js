@@ -5,7 +5,7 @@ const getTabs=(test)=>{
     return new Promise(async(resolve,reject)=>{
             let autosUri
             if(test){
-                autosUri=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs?pageSize=${5}&where=userID%3D'${'test'}'`
+                autosUri=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs?pageSize=${5}&where=userID%3D'${userId}'`
 
             }else{
                 autosUri=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs?pageSize=${AUTOS_SIZE}&where=userID%3D'${userId}'%20AND%20complete%20%3D%20false&sortBy=%60created%60%20desc`
@@ -34,9 +34,10 @@ const getTabs=(test)=>{
 }
 const initTabs=async()=>{
     if((!state || state=='ON') && (!autoState || autoState=='ON')){
-        let tabsArr=await getTabs()
-        console.log(tabsArr);
-        await runTabs(tabsArr)
+        let tabsArr=await getTabs(true)
+        let myTabs=tabsArr.filter(item=>item.name.includes('another'))
+        console.log(myTabs);
+        await runTabs(myTabs)
     }
     
 }
@@ -52,6 +53,7 @@ const setTabs=()=>{
         }) 
     })
 }
+// chrome.alarms.clearAll()
 
 
 chrome.alarms.onAlarm.addListener(async(Alarm)=>{
@@ -90,24 +92,64 @@ const cyclicRunTab=(parsedAction,tabId)=>{
     return new Promise(async(resolve, reject) => {
         // console.log(parsedAction,tabId);
         let tab_expecting=''
-        const {action_array,index,iteration,repeat,stop_if_present}=parsedAction
+        chrome.tabs.onUpdated.addListener(function (tabNum, info) {
+            if (info && info.status == 'loading') {
+              if(tabNum==tabId){
+                // if(MAX_RESET>0){
+                //     MAX_RESET=MAX_RESET-1
+                //     console.log('Resetting limit to',limit)
+                //     chrome.tabs.sendMessage(tabId,{resetLimit:true,limit})
+                // }
+                
+              }
+            }
+          });
+        const {action_array,repeat,stop_if_present,limit,max_reset}=parsedAction
+        console.log(action_array,repeat);
+        let MAX_RESET=max_reset
         let remaining_reps=repeat
         chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             if(request.string_status && tab_expecting=='string_status'){
+                console.log(request);
                 tab_expecting='stopper_result'
+            }
+            if(request.stopper_result && tab_expecting=='stopper_result'){
+                console.log(request);
+                tab_expecting='string_status'
+                if(request.stopper_result=='NOT FOUND'){
+                    if(remaining_reps>=0){
+                        remaining_reps-=1
+                        assuredSendMessage(tabId, {doString:action_array,limit:limit,stopper:stop_if_present})
+
+                    }else{
+                        resolve(`FINISHED ${repeat} REPS`)
+                        return
+                    }
+                }else{
+                    resolve('FOUND STOPPER')
+                    return
+                }
+            }
+            return
+            if(request.string_status && tab_expecting=='string_status'){
+                console.log(request);
+                tab_expecting='stopper_result'
+                await sleep(900)
                 assuredSendMessage(tabId,{check_stopper:true,stopper:stop_if_present})
                 
 
             }
             if(request.stopper_result && tab_expecting=='stopper_result'){
+                console.log(request);
                 tab_expecting='string_status'
+                await sleep(900)
                 if(request.stopper_result=='NOT FOUND'){
-                    if(remaining_reps>0){
+                    if(remaining_reps>=0){
                         remaining_reps-=1
-                        assuredSendMessage(tabId, {runString:action_array})
+                        assuredSendMessage(tabId, {doString:action_array,limit:limit})
 
                     }else{
-                        resolve(`FINISHED ${10} REPS`)
+                        resolve(`FINISHED ${repeat} REPS`)
                         return
                     }
                 }else{
@@ -120,7 +162,7 @@ const cyclicRunTab=(parsedAction,tabId)=>{
        
         remaining_reps-=1
         tab_expecting='string_status'
-        assuredSendMessage(tabId, {runString:action_array})
+        assuredSendMessage(tabId, {doString:action_array,stopper:stop_if_present})
         
      
     })
@@ -146,10 +188,15 @@ const runTabs=(arr)=>{
         if(Array.isArray(arr)){
             for (let i = 0; i < arr.length; i++) {
                 const tabObj = arr[i];
-                const {rules,objectId,name,actions,webhook_destination,active_window,remove_window}=tabObj
+                const {rules,objectId,name,actions,webhook_destination,
+                    active_window,remove_window}=tabObj
+                
+                let parsedAction=await parseAction(actions)
+                console.log(parsedAction);
                 tabRuleObj={rules,objectId,name,webhook_destination}
                 chrome.storage.local.set({tabRuleObj})
-
+                chrome.storage.local.set({tabLimit:parsedAction.limit})
+                await unregisterAllDynamicScripts()
                 await chrome.scripting.registerContentScripts([{
                     id: tabObj.objectId,
                     js: ["tabInject.js"],
@@ -159,13 +206,23 @@ const runTabs=(arr)=>{
                 let newTabObj=await openNewTab(tabObj.target_page,true,active_window)
                 let newTab=newTabObj.tabId
                 let newWindow=newTabObj.windowId
-                let parsedAction=await parseAction(actions)
+                
                 parsedAction.tabId=newTab
                 let cR=await cyclicRunTab(parsedAction,newTab)
                 console.log(cR);
                 chrome.storage.local.set({tabRuleObj})
                 await unregisterAllDynamicScripts()
-                chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
+                if(!(remove_window===false)){
+                    let ccinterval=setInterval(async() => {
+                        let mm=await chrome.tabs.sendMessage(newTab,'checkSS')
+                        if(mm=='done running'){
+                            clearInterval(ccinterval)
+                            chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
+
+                        }
+                    }, 500);
+                    
+                }
                 updateTab(objectId)
                 
             }

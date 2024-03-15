@@ -6,6 +6,9 @@ importScripts(
     "./handlers/recipes.js")
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+    if(request.message){
+        console.log(request);
+    }
     if(request==='check my actions'){
         chrome.storage.local.get('tabActions',res=>{
             if(res.tabActions){
@@ -17,8 +20,30 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             }
         })
     }
-    if(request.recipe){
+    if(request.recipes){
+        chrome.webRequest.onCompleted.removeListener(resultCheckers)
         console.log(request);
+        toBeMadeLen=0
+        salesToBeMadeLen=0
+        salesUrlToBeMade=[]
+        urlsToBeMade=[]
+        const {recipes,type}=request
+
+        await unregisterAllDynamicScripts()
+        
+        let sendingResult=await sendRecipes(recipes)
+        console.log(sendingResult);
+        await sleep(500)
+        chrome.tabs.remove(sender.tab.id)
+        await sleep(1000)
+        if(recipesArr[0]){
+            let nextRecipe=recipesArr.shift()
+            chrome.webRequest.onCompleted.addListener(resultCheckers,
+                {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+            runOneRecipe(nextRecipe)
+        }
+        
+        
     }
     if(request.string_status){
         
@@ -84,11 +109,14 @@ const initiateExtension=async(action)=>{
     .then(async response=>{
         let res= await response.json()
         if(res[0]){
-            const {autos_batch_size,autos_frequency}=res[0]
+            const {autos_batch_size,autos_frequency,recipes_enabled}=res[0]
             AUTOS_FREQ=autos_frequency || 5
             AUTOS_SIZE=autos_batch_size || 10
-            setTabs()
-            // initTabs()
+            if(recipes_enabled){
+                startRecipes()
+            }
+            // setTabs()
+            initTabs()
         }else{
             console.log(`No settings for ${userId}`,res);
         }

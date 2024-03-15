@@ -30,6 +30,7 @@ const othee=()=>{
     
 
     const {rules,objectId,name,webhook_destination}=tabRuleObj
+    
 
     // console.log(rules);
 
@@ -56,25 +57,32 @@ const othee=()=>{
                 } 
             })
         }
-        
         if(match){
-            originalFetch.apply(this, arguments).then(async res=>{
-                let response=await res.json()
-                let interceptObj={
-                    objectId,
-                    name,
-                    response,
-                    url,
-                    webhook_destination,
-                    timestamp :new Date().getTime()
-                }
-                let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
-                let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
-                prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                prevInterceptArr.push(interceptObj)
-                st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
-            })
-            return
+            console.log('Found match');
+            let tabLimit=st.getItem('tabLimit')
+            console.log(tabLimit);
+            if(tabLimit>0){
+                tabLimit=tabLimit-1
+                st.setItem('tabLimit',tabLimit)
+                originalFetch.apply(this, arguments).then(async res=>{
+                    let response=await res.json()
+                    let interceptObj={
+                        objectId,
+                        name,
+                        response,
+                        url,
+                        webhook_destination,
+                        timestamp :new Date().getTime()
+                    }
+                    let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
+                    let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
+                    prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                    prevInterceptArr.push(interceptObj)
+                    st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
+                })
+                return
+            }
+            
         }
         
 
@@ -91,10 +99,11 @@ const othee=()=>{
         this.addEventListener('load', async function() {
             const {responseURL,responseType,response}=this
             let url=responseURL
-            if(salesUrlToBeMade[0]){
+            if(Array.isArray(salesUrlToBeMade) && salesUrlToBeMade[0]){
                 if(url.toLowerCase().includes('sales-api')){
                     let targetObj=salesUrlToBeMade.shift()
                     let URL=targetObj.url
+                    const {destination,label,objectId}=targetObj
                     var mlr = new XMLHttpRequest();
                     mlr.onreadystatechange = function() {
                         if (mlr.readyState === XMLHttpRequest.DONE) {
@@ -102,7 +111,10 @@ const othee=()=>{
                             const toBeReturnedObj={
                                 url:URL,
                                 type:targetObj.type,
-                                response:mlr.responseText
+                                response:mlr.responseText,
+                                destination,
+                                label,
+                                objectId
                             }
                             salesUrlsToBeReturned.push(toBeReturnedObj)
                             localStorage.setItem("salesUrlsToBeReturned",JSON.stringify(salesUrlsToBeReturned))
@@ -111,7 +123,10 @@ const othee=()=>{
                             const toBeReturnedObj={
                                 url:URL,
                                 type:targetObj.type,
-                                response:mlr.status
+                                response:mlr.status,
+                                destination,
+                                label,
+                                objectId
                             }
                             salesUrlsToBeReturned.push(toBeReturnedObj)
                             localStorage.setItem("salesUrlsToBeReturned",JSON.stringify(salesUrlsToBeReturned))
@@ -121,20 +136,25 @@ const othee=()=>{
                     mlr.open('GET', URL, true);
                     mlr.withCredentials = true
                     SNHeaders.forEach(val=>{
-                        mlr.setRequestHeader(`${val.name}`, val.value);
+                        try {
+                            mlr.setRequestHeader(`${val.name}`, val.value); 
+                        } catch (error) {
+                            console.log('Could not add header',val.name);
+                        }
+                        
+                        
                     })
                     
                     // mlr.send();
                     localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade))
                 }
             }
-            if(urlsToBeMade[0]){
+            if(Array.isArray(urlsToBeMade) && urlsToBeMade[0]){
                 if(url.toLowerCase().includes('voyager')){
                     let hd=this.getAllResponseHeaders()
-                    console.log(hd);
                     let targetObj=urlsToBeMade.shift()
                     let URL=targetObj.url
-
+                    const {destination,label,objectId}=targetObj
 
                     var mlr = new XMLHttpRequest();
                     mlr.onreadystatechange = function() {
@@ -143,7 +163,10 @@ const othee=()=>{
                             const toBeReturnedObj={
                                 url:URL,
                                 type:targetObj.type,
-                                response:mlr.responseText
+                                response:mlr.responseText,
+                                destination,
+                                label,
+                                objectId
                             }
                             urlsToBeReturned.push(toBeReturnedObj)
                             localStorage.setItem("urlsToBeReturned",JSON.stringify(urlsToBeReturned))
@@ -152,7 +175,10 @@ const othee=()=>{
                             const toBeReturnedObj={
                                 url:URL,
                                 type:targetObj.type,
-                                response:mlr.status
+                                response:mlr.status,
+                                destination,
+                                label,
+                                objectId
                             }
                             urlsToBeReturned.push(toBeReturnedObj)
                             localStorage.setItem("urlsToBeReturned",JSON.stringify(urlsToBeReturned))
@@ -178,25 +204,32 @@ const othee=()=>{
                     } 
                 })
             }
-            
             if(match){
-                if(response.text && typeof response.text === 'function'){
-                    const text = await response.text();
-                    const parsedResponse=JSON.parse(text);
-                    let interceptObj={
-                        objectId,
-                        name,
-                        response:parsedResponse,
-                        url,
-                        webhook_destination,
-                        timestamp :new Date().getTime()
+                console.log('Found match');
+                let tabLimit=st.getItem('tabLimit')
+                console.log(tabLimit);
+                if(tabLimit>0){
+                    tabLimit=tabLimit-1
+                    st.setItem('tabLimit',tabLimit)
+                    if(response.text && typeof response.text === 'function'){
+                        const text = await response.text();
+                        const parsedResponse=JSON.parse(text);
+                        let interceptObj={
+                            objectId,
+                            name,
+                            response:parsedResponse,
+                            url,
+                            webhook_destination,
+                            timestamp :new Date().getTime()
+                        }
+                        let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
+                        let sentIntercepts=JSON.parse(st.getItem('sentIntercepted'))
+                        prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                        prevInterceptArr.push(interceptObj)
+                        st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
                     }
-                    let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
-                    let sentIntercepts=JSON.parse(st.getItem('sentIntercepted'))
-                    prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                    prevInterceptArr.push(interceptObj)
-                    st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
                 }
+                
             }
             
         })
