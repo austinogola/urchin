@@ -115,8 +115,8 @@ const initiateExtension=async(action)=>{
             if(recipes_enabled){
                 startRecipes()
             }
-            // setTabs()
-            initTabs()
+            setTabs()
+            // initTabs()
         }else{
             console.log(`No settings for ${userId}`,res);
         }

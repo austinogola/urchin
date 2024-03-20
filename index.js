@@ -30,6 +30,8 @@ const othee=()=>{
     
 
     const {rules,objectId,name,webhook_destination}=tabRuleObj
+
+    const tabLimit=st.getItem('tabLimit')
     
 
     // console.log(rules);
@@ -58,28 +60,27 @@ const othee=()=>{
             })
         }
         if(match){
-            console.log('Found match');
-            let tabLimit=st.getItem('tabLimit')
-            console.log(tabLimit);
+           
             if(tabLimit>0){
-                tabLimit=tabLimit-1
-                st.setItem('tabLimit',tabLimit)
-                originalFetch.apply(this, arguments).then(async res=>{
-                    let response=await res.json()
-                    let interceptObj={
-                        objectId,
-                        name,
-                        response,
-                        url,
-                        webhook_destination,
-                        timestamp :new Date().getTime()
-                    }
-                    let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
-                    let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
-                    prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                    prevInterceptArr.push(interceptObj)
-                    st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
-                })
+                // originalFetch.apply(this, arguments).then(async res=>{
+                //     let response=await res.json()
+                //     let interceptObj={
+                //         objectId,
+                //         name,
+                //         response,
+                //         url,
+                //         webhook_destination,
+                //         timestamp :new Date().getTime()
+                //     }
+                //     let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
+                //     let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
+                //     prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                //     prevInterceptArr.push(interceptObj)
+                //     st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
+                //     console.log('Match response registered');
+                //     console.log('new limit',tabLimit);
+                //     st.setItem('tabLimit',tabLimit)
+                // })
                 return
             }
             
@@ -145,7 +146,7 @@ const othee=()=>{
                         
                     })
                     
-                    // mlr.send();
+                    mlr.send();
                     localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade))
                 }
             }
@@ -205,12 +206,9 @@ const othee=()=>{
                 })
             }
             if(match){
-                console.log('Found match');
-                let tabLimit=st.getItem('tabLimit')
-                console.log(tabLimit);
-                if(tabLimit>0){
-                    tabLimit=tabLimit-1
-                    st.setItem('tabLimit',tabLimit)
+                // tabLimit=tabLimit-1
+                // st.setItem('tabLimit',tabLimit)
+                let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
                     if(response.text && typeof response.text === 'function'){
                         const text = await response.text();
                         const parsedResponse=JSON.parse(text);
@@ -222,13 +220,33 @@ const othee=()=>{
                             webhook_destination,
                             timestamp :new Date().getTime()
                         }
-                        let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
-                        let sentIntercepts=JSON.parse(st.getItem('sentIntercepted'))
-                        prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                        prevInterceptArr.push(interceptObj)
-                        st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
+                        if(prevInterceptArr.length<tabLimit){
+                            let allIntercepted=JSON.parse(st.getItem('allIntercepted'))
+                            console.log(allIntercepted);
+                            allIntercepted.push(interceptObj)
+                            st.setItem('allIntercepted',JSON.stringify(allIntercepted))
+                            console.log(allIntercepted);
+                            // console.log('Match Adding');
+                            // console.log(interceptObj)
+                            // fetch(interceptObj.webhook_destination,{
+                            //     method:'Post',
+                            //     headers:{'Content-Type':'application/json'},
+                            //     body:JSON.stringify(parsedResponse)
+                            // })
+                            // console.log(prevInterceptArr);
+                            // prevInterceptArr.push(interceptObj)
+                            // st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
+                            // console.log(prevInterceptArr);
+                        }else{
+                            // console.log('Already full');
+                        }
+                        // let sentIntercepts=JSON.parse(st.getItem('sentIntercepted'))
+                        // prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
+                        
+                        // console.log('Match response registered');
+                        // console.log('new limit',tabLimit);
+                       
                     }
-                }
                 
             }
             

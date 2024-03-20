@@ -81,6 +81,7 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request.doString){
         sendResponse('Running string')
         const {doString,limit,stopper}=request
+        // console.log(doString,limit,stopper);
         let string_status=await runString(doString,limit)
         chrome.runtime.sendMessage({string_status})
         let target=await loadSelector(stopper)
@@ -104,6 +105,10 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request=='check intercepted'){
         checkIntercepted()
     }
+    if(request.checkIntercepted){
+        const {url}=request
+        newCheckIntercept(url)
+    }
     if(request=='connect to me'){
         sendResponse('connecting to you')
         var port = chrome.runtime.connect({name: "action_port"});
@@ -119,12 +124,47 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     }
 })
 
+const newCheckIntercept=(url)=>{
+    console.log('Checking',url);
+    return new Promise((resolve, reject) => {
+        let times=0
+        let mm=setInterval(() => {
+            times+=1
+            let allIntercepted=JSON.parse(localStorage.getItem('allIntercepted'))
+            let ourObjArr=allIntercepted.filter(item=>item.url==url)
+            console.log(ourObjArr);
+            if(ourObjArr[0]){
+                chrome.runtime.sendMessage({tabIntercepted:ourObjArr[0]}) 
+                clearInterval(mm)
+            }
+            if(times==3){
+                clearInterval(mm)
+            }
+            
+            
+        }, 650);
+        
+    })
+}
 
-const checkIntercepted=()=>{
+const checkIntercepted=(reset)=>{
+    return new Promise((resolve, reject) => {
+        let prevInterceptArr=JSON.parse(localStorage.getItem('interceptArr'))
+        // chrome.storage.local.set({interceptArr:prevInterceptArr})
+        chrome.runtime.sendMessage({interceptedArray:prevInterceptArr})
+        if(reset && reset==true){
+            localStorage.setItem('interceptArr',JSON.stringify([]))
+        }
+        resolve('Checked')
+    })
+}
+
+const checkIntercepted2=()=>{
     let times=0
-
+    
+    return
     let ourInterval=setInterval(() => {
-        if(times>3){
+        if(times>1){
             clearInterval(ourInterval)
         }
         else{
@@ -133,12 +173,7 @@ const checkIntercepted=()=>{
             let interceptArr=JSON.parse(localStorage.getItem('interceptArr'))
             if(interceptArr!==null){
                 interceptArr=interceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                if(interceptArr[0]){
-                    interceptArr.forEach(obj => {
-                        chrome.runtime.sendMessage({tabIntercepted:obj})
-                        sentIntercepts.push(obj.timestamp)
-                    });
-                }
+                
                 
             }
             localStorage.setItem("sentIntercepted",JSON.stringify(sentIntercepts))
@@ -196,9 +231,8 @@ const runString=async(action_array,limit)=>{
     return new Promise(async(resolve, reject) => {
         for (let i = 0; i < action_array.length; i++) {
             if(action_array[i]=='reset_rules_limit'){
-                chrome.runtime.sendMessage({message:'Resetting tab Limit'})
-                chrome.storage.local.set({tabLimit:limit})
-                localStorage.setItem('tabLimit',limit)
+                chrome.runtime.sendMessage({message:`Resetting tab Limit to ${limit}`})
+                await checkIntercepted(true)
             }
             else{
                 const itemArr = action_array[i].split(' ')

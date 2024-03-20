@@ -33,12 +33,22 @@ const getTabs=(test)=>{
 
 }
 const initTabs=async()=>{
-    if((!state || state=='ON') && (!autoState || autoState=='ON')){
-        let tabsArr=await getTabs(true)
-        let myTabs=tabsArr.filter(item=>item.name.includes('another'))
-        console.log(myTabs);
-        await runTabs(myTabs)
-    }
+    chrome.storage.local.get(['autoState','state'],async res=>{
+        state=res.state
+        autoState=res.autoState
+        
+        if((!state || state=='ON') && (!autoState || autoState=='ON')){
+            let tabsArr=await getTabs()
+            // let myTabs=tabsArr.filter(item=>item.name.includes('Paginate 2'))
+            console.log(tabsArr);
+            await runTabs(tabsArr)
+        }
+        // let tabsArr=await getTabs(true)
+        //     let myTabs=tabsArr.filter(item=>item.name.includes('Paginate 2'))
+        //     console.log(myTabs);
+        //     await runTabs(myTabs)
+    })
+    
     
 }
 
@@ -106,21 +116,25 @@ const cyclicRunTab=(parsedAction,tabId)=>{
           });
         const {action_array,repeat,stop_if_present,limit,max_reset}=parsedAction
         console.log(action_array,repeat);
+        console.log('Repeat-->',repeat);
+          const LIMIT=limit
         let MAX_RESET=max_reset
-        let remaining_reps=repeat
+        let rep_count=1
         chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             if(request.string_status && tab_expecting=='string_status'){
                 console.log(request);
                 tab_expecting='stopper_result'
+                assuredSendMessage(tabId,{check_stopper:true,stopper:stop_if_present})
             }
             if(request.stopper_result && tab_expecting=='stopper_result'){
                 console.log(request);
                 tab_expecting='string_status'
                 if(request.stopper_result=='NOT FOUND'){
-                    if(remaining_reps>=0){
-                        remaining_reps-=1
-                        assuredSendMessage(tabId, {doString:action_array,limit:limit,stopper:stop_if_present})
-
+                    let okk=rep_count<=repeat
+                    if(okk){
+                        console.log('Repetition ',rep_count,'of',repeat);
+                        assuredSendMessage(tabId, {doString:action_array,limit:LIMIT,stopper:stop_if_present})
+                        rep_count+=1
                     }else{
                         resolve(`FINISHED ${repeat} REPS`)
                         return
@@ -144,8 +158,8 @@ const cyclicRunTab=(parsedAction,tabId)=>{
                 tab_expecting='string_status'
                 await sleep(900)
                 if(request.stopper_result=='NOT FOUND'){
-                    if(remaining_reps>=0){
-                        remaining_reps-=1
+                    if(rep_count>=0){
+                        rep_count-=1
                         assuredSendMessage(tabId, {doString:action_array,limit:limit})
 
                     }else{
@@ -159,10 +173,11 @@ const cyclicRunTab=(parsedAction,tabId)=>{
                 
             }
         })
-       
-        remaining_reps-=1
+        
         tab_expecting='string_status'
-        assuredSendMessage(tabId, {doString:action_array,stopper:stop_if_present})
+        console.log('Repetition ',rep_count);
+        assuredSendMessage(tabId, {doString:action_array,limit:LIMIT,stopper:stop_if_present})
+        rep_count+=1
         
      
     })
@@ -194,8 +209,10 @@ const runTabs=(arr)=>{
                 let parsedAction=await parseAction(actions)
                 console.log(parsedAction);
                 tabRuleObj={rules,objectId,name,webhook_destination}
+                // console.log(tabRuleObj);
                 chrome.storage.local.set({tabRuleObj})
                 chrome.storage.local.set({tabLimit:parsedAction.limit})
+                chrome.storage.local.set({interceptArr:[]})
                 await unregisterAllDynamicScripts()
                 await chrome.scripting.registerContentScripts([{
                     id: tabObj.objectId,
@@ -213,15 +230,8 @@ const runTabs=(arr)=>{
                 chrome.storage.local.set({tabRuleObj})
                 await unregisterAllDynamicScripts()
                 if(!(remove_window===false)){
-                    let ccinterval=setInterval(async() => {
-                        let mm=await chrome.tabs.sendMessage(newTab,'checkSS')
-                        if(mm=='done running'){
-                            clearInterval(ccinterval)
-                            chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
-
-                        }
-                    }, 500);
-                    
+                    await sleep(10000)
+                    chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
                 }
                 updateTab(objectId)
                 

@@ -3,9 +3,20 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
         const {tabIntercepted}=request
         sendRuleResult(tabIntercepted)
     }
+    if(request.interceptedArray){
+        const {interceptedArray}=request
+        if(interceptedArray[0]){
+            interceptedArray.forEach(obj => {
+                sendRuleResult(obj)
+                
+            });
+        }
+    }
 })
 
+let alReadySent=[]
 const sendRuleResult=(resObj)=>{
+    
     const {name,objectId,response,webhook_destination,timestamp,url}=resObj
 
     const body={response,url}
@@ -39,8 +50,11 @@ const sendRuleResult=(resObj)=>{
     })
 }
 
+// chrome.webRequest.onErrorOccurred.addListener((dets)=>{
+//     console.log(dets);
+// },{urls:["<all_urls>"]},["extraHeaders"])
 
-chrome.webRequest.onBeforeRequest.addListener((dets)=>{
+chrome.webRequest.onCompleted.addListener((dets)=>{
 
     const {url}=dets
      
@@ -55,8 +69,9 @@ chrome.webRequest.onBeforeRequest.addListener((dets)=>{
                     } 
                 })
                 if(match){
+                    console.log('Found match');
                     const {tabId}=dets
-                    chrome.tabs.sendMessage(tabId,'check intercepted')
+                    chrome.tabs.sendMessage(tabId,{checkIntercepted:true,url})
                 }
 
             }
@@ -66,6 +81,6 @@ chrome.webRequest.onBeforeRequest.addListener((dets)=>{
     }
     
     
-},{urls:["<all_urls>"]},["requestBody","extraHeaders"])
+},{urls:["<all_urls>"]},["responseHeaders","extraHeaders"])
 
 

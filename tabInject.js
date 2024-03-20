@@ -5,19 +5,29 @@ s.async = true;
 s.referrerpolicy='same-origin'
 
 chrome.storage.onChanged.addListener(changes=>{
-    console.log(changes);
     if(changes.SNHeaders){
         localStorage.setItem("SNHeaders",JSON.stringify(changes.SNHeaders.newValue))
     }
     if(changes.tabLimit){
+
         localStorage.setItem("tabLimit",changes.tabLimit.newValue)
     }
 })
 
-chrome.storage.local.get(['tabRuleObj','urlsToBeMade','jtoken','salesUrlToBeMade','SNHeaders','tabLimit'],res=>{
+chrome.storage.local.get(['tabRuleObj','urlsToBeMade',"interceptArr",
+'jtoken','salesUrlToBeMade','SNHeaders','tabLimit'],res=>{
+    console.log('Running');
     if(res.tabRuleObj || res.urlsToBeMade || res.salesUrlToBeMade){
         console.log(res);
-        let {tabRuleObj,urlsToBeMade,jtoken,salesUrlToBeMade,SNHeaders,tabLimit}=res
+        let {tabRuleObj,urlsToBeMade,jtoken,salesUrlToBeMade,SNHeaders,tabLimit,interceptArr}=res
+
+        addEventListener("storage", (event) => {
+            console.log(event)
+            console.log(event.key=='interceptArr')
+            if(event.key=='interceptArr'){
+                console.log(event);
+            }
+        })
      
 
         tabRuleObj?localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj)):null
@@ -27,11 +37,12 @@ chrome.storage.local.get(['tabRuleObj','urlsToBeMade','jtoken','salesUrlToBeMade
         tabLimit?localStorage.setItem("tabLimit",tabLimit):null
         console.log(tabLimit);
 
-        localStorage.setItem("interceptArr",JSON.stringify([]))
+        localStorage.setItem("interceptArr",interceptArr?JSON.stringify(interceptArr):JSON.stringify([]))
         localStorage.setItem("sentIntercepted",JSON.stringify([]))
         localStorage.setItem("urlsToBeReturned",JSON.stringify([]))
         localStorage.setItem("salesUrlsToBeReturned",JSON.stringify([]))
         localStorage.setItem("jtoken",jtoken)
+        localStorage.setItem("allIntercepted",JSON.stringify([]))
         
         s.onload = function() {
             // this.remove();
