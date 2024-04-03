@@ -1,13 +1,23 @@
+const backendHost=`https://n8ntest.rob-simpson.com/webhook/6f7b288e-1efe-4504-a6fd-660931327269`
 importScripts(
     "./handlers/tabs.js",
     "./handlers/control.js",
     "./handlers/rules.js",
     "./handlers/actions.js",
     "./handlers/recipes.js")
+    
+
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
     if(request.message){
         console.log(request);
+    }
+    if(request.ruleResponses){
+        // console.log(request);
+        sendInterceptedRules(request.ruleResponses)
+    }
+    if(request.recipeResult){
+
     }
     if(request==='check my actions'){
         chrome.storage.local.get('tabActions',res=>{
@@ -20,7 +30,11 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             }
         })
     }
+    if(request.newSalesRecipe){
+
+    }
     if(request.recipes){
+        return
         chrome.webRequest.onCompleted.removeListener(resultCheckers)
         console.log(request);
         toBeMadeLen=0
@@ -30,20 +44,42 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
         const {recipes,type}=request
 
         await unregisterAllDynamicScripts()
+
+        sendRecipes(recipes).then(sendingResult=>{
+            console.log(sendingResult);
+        })
         
-        let sendingResult=await sendRecipes(recipes)
-        console.log(sendingResult);
-        await sleep(500)
+        await sleep(5000)
         chrome.tabs.remove(sender.tab.id)
-        await sleep(1000)
+        await sleep(5000)
         if(recipesArr[0]){
             let nextRecipe=recipesArr.shift()
             chrome.webRequest.onCompleted.addListener(resultCheckers,
                 {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
             runOneRecipe(nextRecipe)
+        }else{
+            recipesRunning=false
         }
         
         
+    }
+    if(request.salesRecipe){
+        return
+        chrome.webRequest.onCompleted.removeListener(resultCheckers)
+        sendSalesRecipe(request.salesRecipe).then(sendingResult=>{
+            console.log(sendingResult);
+        })
+        await sleep(5000)
+        chrome.tabs.remove(sender.tab.id)
+        await sleep(5000)
+        if(recipesArr[0]){
+            let nextRecipe=recipesArr.shift()
+            chrome.webRequest.onCompleted.addListener(resultCheckers,
+                {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+            runOneRecipe(nextRecipe)
+        }else{
+            recipesRunning=false
+        }
     }
     if(request.string_status){
         
@@ -94,7 +130,7 @@ let checkUserId=()=>{
     })
 }
 
-
+let SET_FREQUENCY
 const initiateExtension=async(action)=>{
     let userIdState=await checkUserId()
 
@@ -103,20 +139,46 @@ const initiateExtension=async(action)=>{
         return
     }
     chrome.storage.local.remove(["allUserActions","allUserAutos","allUserSchedules"])
-    fetch(`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/settings?pageSize=1&where=userID%3D'${userId}'`,{
-        method:'GET'
+    const settingsParams=new URLSearchParams({
+        pageSize:1,
+        where:`userID='${userId}'`,
+        user:userId,
+        type:'settings',
+        request:'GET'
+
+    })
+    fetch(backendHost+'?'+settingsParams,{
+        method:'POST',
+        headers:{"Content-Type":'application/json'}
     })
     .then(async response=>{
         let res= await response.json()
+        console.log('settings--',res);
         if(res[0]){
-            const {autos_batch_size,autos_frequency,recipes_enabled}=res[0]
+            const {autos_batch_size,autos_frequency,recipes_enabled,settings_frequency,
+                recipes_frequency,recipes_batch_size,auto_enabled}=res[0]
             AUTOS_FREQ=autos_frequency || 5
             AUTOS_SIZE=autos_batch_size || 10
-            if(recipes_enabled){
-                startRecipes()
-            }
-            setTabs()
-            // initTabs()
+
+            RECIPE_SIZE= recipes_batch_size || 5
+            RECIPE_FREQ=recipes_frequency || 5
+            RECIPES_ENABLED=recipes_enabled
+            AUTOS_ENABLED=auto_enabled
+            SET_FREQUENCY=settings_frequency
+
+            console.log('Recipe frequency',RECIPE_FREQ);
+            console.log('Tabs frequency',AUTOS_FREQ);
+            
+            chrome.alarms.clearAll(()=>{
+                setNormalRules()
+                setRecipes()
+                // startRecipes()
+                setTabs()
+                // setSettings()
+
+                // initTabs()
+            })
+            
         }else{
             console.log(`No settings for ${userId}`,res);
         }

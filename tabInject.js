@@ -8,45 +8,65 @@ chrome.storage.onChanged.addListener(changes=>{
     if(changes.SNHeaders){
         localStorage.setItem("SNHeaders",JSON.stringify(changes.SNHeaders.newValue))
     }
-    if(changes.tabLimit){
-
-        localStorage.setItem("tabLimit",changes.tabLimit.newValue)
-    }
+    
 })
+// ['tabRuleObj','urlsToBeMade',"interceptArr",
+// 'jtoken','salesUrlToBeMade','SNHeaders','tabLimit','listenToSales','salesDetails']
 
-chrome.storage.local.get(['tabRuleObj','urlsToBeMade',"interceptArr",
-'jtoken','salesUrlToBeMade','SNHeaders','tabLimit'],res=>{
-    console.log('Running');
-    if(res.tabRuleObj || res.urlsToBeMade || res.salesUrlToBeMade){
-        console.log(res);
-        let {tabRuleObj,urlsToBeMade,jtoken,salesUrlToBeMade,SNHeaders,tabLimit,interceptArr}=res
 
-        addEventListener("storage", (event) => {
-            console.log(event)
-            console.log(event.key=='interceptArr')
-            if(event.key=='interceptArr'){
-                console.log(event);
-            }
-        })
-     
+// let {tabRuleObj,urlsToBeMade,jtoken,salesUrlToBeMade,SNHeaders,
+//     salesDetails,tabLimit,interceptArr,listenToSales}=res
 
-        tabRuleObj?localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj)):null
-        urlsToBeMade?localStorage.setItem("urlsToBeMade",JSON.stringify(urlsToBeMade)):null
-        salesUrlToBeMade?localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade)):null
-        SNHeaders?localStorage.setItem("SNHeaders",JSON.stringify(SNHeaders)):null
-        tabLimit?localStorage.setItem("tabLimit",tabLimit):null
-        console.log(tabLimit);
 
-        localStorage.setItem("interceptArr",interceptArr?JSON.stringify(interceptArr):JSON.stringify([]))
-        localStorage.setItem("sentIntercepted",JSON.stringify([]))
-        localStorage.setItem("urlsToBeReturned",JSON.stringify([]))
-        localStorage.setItem("salesUrlsToBeReturned",JSON.stringify([]))
-        localStorage.setItem("jtoken",jtoken)
+chrome.storage.local.get(['interceptedArr','tabRuleObj','tabLimit','normRules',
+'newToBeMade','jtoken','urlsToBeMade','listenToSales','salesDetails','interceptedSales'],res=>{
+    if(true){
+        const {normRules,interceptedArr,tabRuleObj,tabLimit,newToBeMade
+            ,jtoken,salesDetails,listenToSales,interceptedSales}=res
+  
+       
+        localStorage.setItem("tabLimit",tabLimit)
+        localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj))
+        localStorage.setItem("interceptedArr",JSON.stringify(interceptedArr))
         localStorage.setItem("allIntercepted",JSON.stringify([]))
+
+        // localStorage.setItem('urlsToBeMade',JSON.stringify(urlsToBeMade))
+        // localStorage.setItem('urlsToBeReturned',JSON.stringify([]))
         
+        localStorage.setItem('newToBeMade',JSON.stringify(newToBeMade))
+        localStorage.setItem('newToBeReturned',JSON.stringify([]))
+        localStorage.setItem('jtoken',jtoken)
+        localStorage.setItem('listenToSales',listenToSales)
+
+        localStorage.setItem("interceptedSales",JSON.stringify([]))
+        // localStorage.setItem("salesUrlsToBeReturned",JSON.stringify([]))
+
+        localStorage.setItem('listenToSales',listenToSales)
+        localStorage.setItem('salesDetails',JSON.stringify(salesDetails))
+
+        localStorage.setItem("normRules",JSON.stringify(normRules))
+
         s.onload = function() {
             // this.remove();
         };
         (document.head || document.documentElement).appendChild(s);
+      
+     
+
+        // tabRuleObj?localStorage.setItem("tabRuleObj",JSON.stringify(tabRuleObj)):null
+        // urlsToBeMade?localStorage.setItem("urlsToBeMade",JSON.stringify(urlsToBeMade)):null
+        // salesUrlToBeMade?localStorage.setItem("salesUrlToBeMade",JSON.stringify(salesUrlToBeMade)):null
+        // SNHeaders?localStorage.setItem("SNHeaders",JSON.stringify(SNHeaders)):null
+        
+
+        // localStorage.setItem("interceptArr",interceptArr?JSON.stringify(interceptArr):JSON.stringify([]))
+        // localStorage.setItem("sentIntercepted",JSON.stringify([]))
+        // localStorage.setItem("urlsToBeReturned",JSON.stringify([]))
+        // 
+        // localStorage.setItem("jtoken",jtoken)
+        // 
+        
+       
+       
     }
 })

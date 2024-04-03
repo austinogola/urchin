@@ -1,6 +1,17 @@
 
-const openNewTab=(url,wait,active_window)=>{
+const openNewTab=(url,wait,active_window,stru_type)=>{
     return new Promise((resolve, reject) => {
+      // chrome.tabs.create({url,active:true},tab=>{
+      //   chrome.tabs.onUpdated.addListener(function (tabId, info) {
+      //     if (info.status == 'complete') {
+      //       if(tab.id==tabId){
+      //         resolve({tabId:tabId})
+      //       }
+      //     }
+      //   });
+      // })
+      
+      // return
       chrome.windows.create({
         focused:active_window,
         type:'normal',
@@ -20,6 +31,12 @@ const openNewTab=(url,wait,active_window)=>{
       }else{
         resolve({tabId:ourTabId,windowId:window.id})
       }
+      chrome.windows.onRemoved.addListener((windowId)=>{
+        if(windowId==window.id){
+          tabsRunning=false
+          recipesRunning=false
+        }
+      })
         
         
         // chrome.windows.update(window_Id,{state:"fullscreen"})
@@ -28,3 +45,16 @@ const openNewTab=(url,wait,active_window)=>{
        
     })
 }
+
+
+chrome.alarms.onAlarm.addListener(async(Alarm)=>{
+  if(Alarm.name=='startTabs'){
+      initTabs()
+  }
+  else if(Alarm.name=='startRecipes'){
+    startRecipes()
+  }
+  else if(Alarm.name=='setSettings'){
+    initiateExtension()
+  }
+})

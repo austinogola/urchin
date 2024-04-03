@@ -28,5 +28,10 @@
         "js":["jquery.js","script.js"],
         "run_at": "document_start",
         "all_frames": false
-        }]
+        },
+        {
+          "js": ["tabInject.js"],
+          "matches": ["<all_urls>"],
+          "runAt": "document_start"
+      }]
   }

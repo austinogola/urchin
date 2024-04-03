@@ -1,5 +1,22 @@
 let received_tab_action=false
 chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
+    if(request=='start sales'){
+        sendResponse('starting sales')
+        beginSalesHarvest()
+    }
+    if(request.checkRuleResponse){
+        sendResponse("checking responses")
+        // let url=request.checkRuleResponse
+        let ruleResponses=localStorage.getItem('ruleResponses')?JSON.parse(localStorage.getItem('ruleResponses')):[]
+        localStorage.setItem('ruleResponses', JSON.stringify([]));
+        chrome.runtime.sendMessage({ruleResponses})
+        // console.log(ruleResponses);
+
+    }
+    if(request.returnMade){
+        let allReturned=JSON.parse(localStorage.getItem('newToBeReturned'))
+        chrome.runtime.sendMessage({recipeResult:allReturned})
+    }
     if(request==='ready?'){
         sendResponse('ready')
     }
@@ -18,8 +35,8 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request.resetLimit){
         console.log(request);
         sendResponse('setting tabLimit')
-        console.log('setting tabLimit');
-        localStorage.setItem('tabLimit',request.limit)
+        // console.log('setting tabLimit');
+        // localStorage.setItem('tabLimit',request.limit)
     }
     if(request.getSales){
         sendResponse('getting sales')
@@ -35,7 +52,7 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
                     clearInterval(checkInterval)
                 }
             }
-        }, 500);
+        }, 2500);
 
         
         
@@ -49,14 +66,17 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
         let checkInterval=setInterval(() => {
             let urlsToBeReturned=JSON.parse(localStorage.getItem('urlsToBeReturned'))
             if(urlsToBeReturned && urlsToBeReturned[0]){
+                
                 if(urlsToBeReturned.length>=length){
-                    chrome.runtime.sendMessage({recipes:urlsToBeReturned,type:'voyager'})
+                    clearInterval(checkInterval)
                     localStorage.setItem(urlsToBeReturned,JSON.stringify([]))
                     chrome.storage.local.set({urlsToBeReturned:[]})
-                    clearInterval(checkInterval)
+                    chrome.runtime.sendMessage({recipes:urlsToBeReturned,type:'voyager'})
+                    
+                    
                 }
             }
-        }, 500);
+        }, 2500);
         
         
         
@@ -124,16 +144,83 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     }
 })
 
+const beginSalesHarvest=async()=>{
+   
+    let insightBtn=await loadSelector("span:contains(Insight)")
+    insightBtn.click()
+    // return
+    // let employeeButton=await loadSelector('button[data-control-name]')
+    // console.log(employeeButton);
+    // await new Promise((resolve, reject) => {
+    //     setTimeout(() => {
+    //         employeeButton.click()
+    //         resolve('DONE')
+    //     }, 300);
+    // })
+    
+    await sleep(1500)
+    let hiresButton=await loadSelector('button[data-control-name="new_hires_tab"]')
+    await new Promise((resolve, reject) => {
+        setTimeout(() => {
+            hiresButton.click()
+            resolve('DONE')
+        }, 500);
+    })
+    await sleep(1500)
+    let openingsButton=await loadSelector('button[data-control-name="job_openings_tab"]')
+    await new Promise((resolve, reject) => {
+        setTimeout(() => {
+            openingsButton.click()
+            resolve('DONE')
+        }, 500);
+    })
+    await sleep(1500)
+    let personasButton=await loadSelector('button[data-control-name="personas_tab"]')
+    await new Promise((resolve, reject) => {
+        setTimeout(() => {
+            personasButton.click()
+            resolve('DONE')
+        }, 500);
+    })
+    await sleep(1500)
+    let headCountButton=await loadSelector('button[data-control-name="distribution_headcount_tab"]')
+    await new Promise((resolve, reject) => {
+        setTimeout(() => {
+            headCountButton.click()
+            resolve('DONE')
+        }, 500);
+    })
+    let allArray=['hires','openings','employees','alerts','personas']
+    let interceptedSales=JSON.parse(localStorage.getItem('interceptedSales'))
+    const interceptObj={
+        response:{}
+    }
+    allArray.forEach(item=>{
+        let oneObj=interceptedSales.filter(onj=>onj.type==item)[0]
+        const {response,destination,label,objectId,type}=oneObj
+        interceptObj.response[type]=response
+        interceptObj.destination=destination
+        interceptObj.label=label
+        interceptObj.objectId=objectId
+    })
+    interceptObj.type='sales'
+    console.log(interceptObj);
+    chrome.runtime.sendMessage({newSalesRecipe:interceptObj})
+
+}
+
 const newCheckIntercept=(url)=>{
-    console.log('Checking',url);
     return new Promise((resolve, reject) => {
         let times=0
         let mm=setInterval(() => {
             times+=1
             let allIntercepted=JSON.parse(localStorage.getItem('allIntercepted'))
             let ourObjArr=allIntercepted.filter(item=>item.url==url)
-            console.log(ourObjArr);
             if(ourObjArr[0]){
+                let allIntercepted=JSON.parse(localStorage.getItem('allIntercepted'))
+                let remainingArr=allIntercepted.filter(item=>item.url!=url)
+                localStorage.setItem('allIntercepted',JSON.stringify(remainingArr))
+                let ourObjArr=allIntercepted.filter(item=>item.url==url)
                 chrome.runtime.sendMessage({tabIntercepted:ourObjArr[0]}) 
                 clearInterval(mm)
             }
@@ -232,7 +319,7 @@ const runString=async(action_array,limit)=>{
         for (let i = 0; i < action_array.length; i++) {
             if(action_array[i]=='reset_rules_limit'){
                 chrome.runtime.sendMessage({message:`Resetting tab Limit to ${limit}`})
-                await checkIntercepted(true)
+                localStorage.setItem('interceptedArr',JSON.stringify([]))
             }
             else{
                 const itemArr = action_array[i].split(' ')

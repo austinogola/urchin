@@ -1,3 +1,4 @@
+let AUTOS_ENABLED
 const getAutos=(test)=>{
     return new Promise(async(resolve,reject)=>{
             let autosUri
