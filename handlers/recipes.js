@@ -4,7 +4,8 @@ let RECIPE_SIZE;
 let RECIPE_FREQ;
 let RECIPES_ENABLED=false
 
-chrome.storage.local.set({newToBeMade:[]})
+let newToBeMade=[]
+chrome.storage.local.set({newToBeMade:newToBeMade})
 const recipeChecker=(dets)=>{
     const {url,tabId}=dets
     if(dets.url==expectedUrl){
@@ -23,44 +24,6 @@ const recipeChecker=(dets)=>{
 }
 let expectedUrl
 
-const getAndSendCompany=(recipe)=>{
-    const {settings,input,label,destination_webhook_url,type,objectId}=recipe
-   
-    return new Promise(async(resolve, reject) => {
-        let mm=new CompanyObjs(recipe)
-        let newToBeMade=[...mm.items]
-        expectedUrl=newToBeMade[newToBeMade.length-1].url
-
-        chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
-            if(request.recipeResult){
-                chrome.webRequest.onCompleted.removeListener(recipeChecker)
-                await sleep(7000)
-                chrome.storage.local.set({newToBeMade:[]})
-                chrome.tabs.remove(sender.tab.id)
-                
-                resolve(request.recipeResult)
-            }
-        })
-
-        chrome.webRequest.onCompleted.addListener(recipeChecker,
-            {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
-
-        chrome.storage.local.set({newToBeMade:newToBeMade})
-        setCsrfToken()
-
-        // await unregisterAllDynamicScripts()
-        // await chrome.scripting.registerContentScripts([{
-        //     id: 'temporary',
-        //     js: ["tabInject.js"],
-        //     matches: ["<all_urls>"],
-        //     runAt: "document_start"
-        // }])
-        let tabUrl=`https://www.linkedin.com/company/${input}/`
-        let newTabObj=await openNewTab(tabUrl,true)
-        
-        
-    })
-}
 
 const getAndSendSales=(recipe)=>{
     const {settings,input,label,destination_webhook_url,type,objectId}=recipe
@@ -98,45 +61,150 @@ const getAndSendSales=(recipe)=>{
     })
 }
 
-const getAndSendProfile=(recipe)=>{
-    const {settings,input,label,destination_webhook_url,type,objectId}=recipe
+let listenToSales=false
+chrome.storage.local.set({listenToSales:listenToSales})
+
+
+
+
+
+const checkReqCompany=async(async)=>{
+
+}
+
+const getAndSendCompany2=(recipe)=>{
+    const companyId=recipe.input
+    return new Promise(async(resolve, reject) => {
+        let mm=new CompanyObjs(recipe)
+        chrome.storage.local.get(['newToBeMade'],async res=>{
+            let currentToBeMade=res.newToBeMade
+            
+            newToBeMade=[...currentToBeMade,...mm.items]
+
+            checkCompUpdata=async(dets)=>{
+                const {url,tabId}=dets
+                if(url.includes('www.linkedin.com/voyager/api/feed/updates' && url.includes(companyId))){
+                    await sleep(5000)
+                    chrome.tabs.sendMessage(tabId,{returnCompany:companyId})
+                    
+                    
+                }
+            }
+
+            const waitMessage=async(request, sender, sendResponse)=>{ 
+                if(request.profileAnswer || request.companyAnswer){
+                    const {companyAnswer}=request
+                    chrome.webRequest.onCompleted.removeListener(checkCompUpdata)
+                    chrome.runtime.onMessage.removeListener(waitMessage)
+                    
+                    formatCompany(companyAnswer)
+                    await sleep(4000)
+                    
+                    chrome.tabs.remove(sender.tab.id)
+                    resolve('DONE')
+                    // if(profileAnswer[0]){
+                    //     let formattedProfile=await formatProfile(profileAnswer)
+                    //     sendFormatted(formattedProfile,'profile')
+            
+                    // }
+                }
+                
+              }
+
+            chrome.runtime.onMessage.addListener(waitMessage)
+
+            chrome.storage.local.set({newToBeMade})
+
+            // listenToSales=true
+            // chrome.storage.local.set({listenToSales:listenToSales})
+
+            chrome.webRequest.onCompleted.addListener(checkCompUpdata,
+                {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+
+            setCsrfToken()
+            // await unregisterAllDynamicScripts()
+            // await chrome.scripting.registerContentScripts([{
+            //     id: 'temporary',
+            //     js: ["inject.js"],
+            //     matches: ["<all_urls>"],
+            //     runAt: "document_start"
+            // }])
+            let tabUrl=`https://www.linkedin.com/company/${companyId}/`
+            let newTabObj=await openNewTab(tabUrl,true)
+
+        })
+    })
+}
+const getAndSendProfile2=(recipe)=>{
+    const profileId=recipe.input
     return new Promise(async(resolve, reject) => {
         let mm=new ProfileObjs(recipe)
-        let newToBeMade=[...mm.items]
-        expectedUrl=newToBeMade[newToBeMade.length-1].url
+        chrome.storage.local.get(['newToBeMade'],async res=>{
+            let currentToBeMade=res.newToBeMade
+            
+            newToBeMade=[...currentToBeMade,...mm.items]
 
-        chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
-            if(request.recipeResult){
-                chrome.webRequest.onCompleted.removeListener(recipeChecker)
-                await sleep(7000)
-                chrome.tabs.remove(sender.tab.id)
-                chrome.storage.local.set({newToBeMade:[]})
-                // updateRecipe(objectId)
-                resolve(request.recipeResult)
+            checkProfUpdata=async(dets)=>{
+                const {url,tabId}=dets
+                if(url.includes('www.linkedin.com/voyager/api/feed/updates')&&
+                 url.includes(profileId))
+                 {
+                    // console.log(url);
+                    await sleep(4000)
+                    chrome.tabs.sendMessage(tabId,{returnProfile:profileId})
+                    
+                }
             }
+
+            const waitMessage=async(request, sender, sendResponse)=>{ 
+                if(request.profileAnswer || request.companyAnswer){
+                    const {profileAnswer}=request
+                    chrome.webRequest.onCompleted.removeListener(checkProfUpdata)
+                    chrome.runtime.onMessage.removeListener(waitMessage)
+                    formatProfile(profileAnswer)
+                    await sleep(5000)
+                    
+                    chrome.tabs.remove(sender.tab.id)
+                    resolve('DONE')
+                    // if(profileAnswer[0]){
+                    //     let formattedProfile=await formatProfile(profileAnswer)
+                    //     sendFormatted(formattedProfile,'profile')
+            
+                    // }
+                    
+                }
+                
+              }
+
+            chrome.runtime.onMessage.addListener(waitMessage)
+
+            chrome.storage.local.set({newToBeMade})
+
+            // listenToSales=true
+            // chrome.storage.local.set({listenToSales:listenToSales})
+
+            chrome.webRequest.onCompleted.addListener(checkProfUpdata,
+                {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+
+            setCsrfToken()
+            // await unregisterAllDynamicScripts()
+            // await chrome.scripting.registerContentScripts([{
+            //     id: 'temporary',
+            //     js: ["inject.js"],
+            //     matches: ["<all_urls>"],
+            //     runAt: "document_start"
+            // }])
+            let tabUrl=`https://www.linkedin.com/in/${profileId}/`
+            let newTabObj=await openNewTab(tabUrl,true)
+
         })
-
-        chrome.webRequest.onCompleted.addListener(recipeChecker,
-            {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
-
-        chrome.storage.local.set({newToBeMade:newToBeMade})
-        setCsrfToken()
-        await unregisterAllDynamicScripts()
-        await chrome.scripting.registerContentScripts([{
-            id: 'temporary',
-            js: ["tabInject.js"],
-            matches: ["<all_urls>"],
-            runAt: "document_start"
-        }])
-        let tabUrl=`https://www.linkedin.com/in/${input}/`
-        let newTabObj=await openNewTab(tabUrl,true)
-    
         
         return
         
         
     })
 }
+
 const SalesObjs = class {
     constructor(recp) {
         const {settings,input,label,destination_webhook_url,type,objectId}=recp
@@ -227,6 +295,7 @@ const CompanyObjs = class {
       
     }
 }
+
 
 
 
@@ -501,6 +570,7 @@ const getSalesData2=async(recipe)=>{
         chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             if(request.newSalesRecipe){
                 await sleep(7000)
+
                 chrome.tabs.remove(sender.tab.id)
                 chrome.storage.local.set({newToBeMade:[]})
                 chrome.storage.local.set({interceptedSales:[]})
@@ -542,12 +612,7 @@ const getSalesData=async(recipe)=>{
     setCsrfToken()
     chrome.storage.local.set({urlsToBeMade})
     chrome.storage.local.set({salesUrlToBeMade})
-    await chrome.scripting.registerContentScripts([{
-        id: input+'tab',
-        js: ["tabInject.js"],
-        matches: ["<all_urls>"],
-        runAt: "document_start"
-    }])
+   
     let salesHomeUrl=`https://www.linkedin.com/sales/company/${input}`
     let newTabObj=await openNewTab(salesHomeUrl,true,true)
 }
@@ -613,7 +678,7 @@ const fetchRecipes=(test)=>{
         const recipeParams=new URLSearchParams({
             pageSize:test?5:RECIPE_SIZE,
             where:test?`userID='${userId}'`:
-            `userID='${userId}' AND complete=false`,
+            `userID='${userId}' AND complete=false AND paused!= true`,
             user:userId,
             type:'recipes',
             request:'GET',
@@ -642,7 +707,7 @@ const updateRecipe=async(id)=>{
     const updateTabParams=new URLSearchParams({
         pageSize:AUTOS_SIZE,
         where:`userID='${userId}' AND complete=false`,
-        user:'rob1',
+        user:userId,
         type:'recipes',
         request:'PUT',
         id:id
@@ -661,6 +726,7 @@ const updateRecipe=async(id)=>{
 }
 // fetchRecipes()
 const runOneRecipe=async(recipe)=>{
+    chrome.storage.local.set({interceptedArr:[]})
     return new Promise(async(resolve, reject) => {
         const {type}=recipe
 
@@ -670,32 +736,35 @@ const runOneRecipe=async(recipe)=>{
             if(type=='profile'){
                 recipesRunning=true
                 console.log('Fetching profile');
-                ans=await getAndSendProfile(recipe)
+                ans=await getAndSendProfile2(recipe)
+                
                 
             }
             else if(type=='company'){
                 recipesRunning=true
                 console.log('Fetching company');
-                ans=await getAndSendCompany(recipe)
+                ans=await getAndSendCompany2(recipe)
                 
             }
             else if(type=='sn_company'){
                 recipesRunning=true
-                console.log('Fetching SN');
-               ans=await getSalesData2(recipe)
-               sendSalesRecipe(ans).then(sendingResult=>{
-                console.log(sendingResult);
-                })
-                resolve(ans)
+                ans=await getSalesData2(recipe)
+            //     
+            //     console.log('Fetching SN');
+            //    
+            //    sendSalesRecipe(ans).then(sendingResult=>{
+            //     console.log(sendingResult);
+            //     })
+            //     resolve(ans)
                 return
                 // ans=await getAndSendSales(recipe)
                 
             }
-            if(ans && ans[0]){
-                sendRecipes(ans).then(sendingResult=>{
-                    console.log(sendingResult);
-                })
-            }
+            // if(ans && ans[0]){
+            //     sendRecipes(ans).then(sendingResult=>{
+            //         console.log(sendingResult);
+            //     })
+            // }
 
         }else{
             resolve('NO TYPE')  
@@ -718,24 +787,35 @@ const startRecipes=async()=>{
     console.log('Checking recipes');
         // recipesArr=recipesArr.filter(item=>item.type=='profile') 
     chrome.storage.local.set({normRules:[]})
-   
-    if(RECIPES_ENABLED && !recipesRunning && !tabsRunning){
-        recipesArr=await fetchRecipes()
-        console.log(recipesArr);
-        // recipesArr=recipesArr.filter(item=>item.type=='sn_company')
-        if(Array.isArray(recipesArr)){
-            for (let i = 0; i < recipesArr.length; i++) {
-                const rcp = recipesArr[i];
-                let ans=await runOneRecipe(rcp)
-                await sleep(4000)
-                
+    chrome.storage.local.get(['state'],async res=>{
+        state=res.state
+        if((!state || state=='ON')&& RECIPES_ENABLED && !recipesRunning && !tabsRunning){
+            recipesArr=await fetchRecipes()
+            console.log(recipesArr);
+            // recipesArr=recipesArr.filter(item=>item.type=='sn_company')
+            if(Array.isArray(recipesArr)){
+                for (let i = 0; i < recipesArr.length; i++) {
+                    const rcp = recipesArr[i];
+                    if(Object.keys(rcp).length>0){
+                        recipesRunning=true
+                        let ans=await runOneRecipe(rcp)
+                        await sleep(4000)
+                    }else{
+                        console.log('Empty object');
+                    }
+                    
+                    
+                    
+                }
+               
+            }else{
+                console.log('Recipe results',recipesArr);
             }
-           
-        }else{
-            console.log('Recipe results',recipesArr);
         }
-    }
-    chrome.storage.local.set({normRules:normRules})
+        chrome.storage.local.set({normRules:normRules})
+    })
+    
+    
     
     
 }
@@ -743,9 +823,6 @@ const startRecipes=async()=>{
 let recipeInt
 const setRecipes=()=>{
     return new Promise(async(resolve, reject) => {
-        // clearInterval(recipeInt)
-
-        // recipeInt=setInterval(startRecipes,RECIPE_FREQ*60*1000)
         chrome.alarms.create(`startRecipes`,{
             delayInMinutes:RECIPE_FREQ,
             periodInMinutes:RECIPE_FREQ

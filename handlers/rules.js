@@ -62,8 +62,9 @@ const tabMatch=(dets)=>{
             const {rules}=tabRuleObj
             if(rules && rules[0]){
                 let match=false
-                rules.forEach(async ruleUrl=>{
-                    if(new RegExp(ruleUrl).test(url)){
+                rules.forEach(async ruleObj=>{
+                    // 
+                    if(new RegExp(ruleObj.request).test(url)){
                         match=true
                     } 
                 })
@@ -81,31 +82,45 @@ const tabMatch=(dets)=>{
 }
 let normRules=[]
 const setNormalRules=async()=>{
-    normRules=await getRules()
+    chrome.webRequest.onCompleted.removeListener(normRuleChecker)
+    if(userId){
+        normRules=await getRules()
     if(Array.isArray(normRules)){
         console.log(normRules);
         chrome.storage.local.set({normRules:normRules})
+        chrome.webRequest.onCompleted.addListener(normRuleChecker,
+            {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
     }else{
         console.log(normRules);
     }
+    }
+    
 }
 
-
-chrome.webRequest.onCompleted.addListener((dets)=>{
+const normRuleChecker=(dets)=>{
     const {url,tabId}=dets
     chrome.storage.local.get(['normRules'],res=>{
         const {normRules}=res
-        if(normRules[0]){
+        if(normRules[0] && Object.keys(normRules[0]).length>0){
             normRules.forEach(obj=>{
-                let regex=obj.target_request
-                if(new RegExp(regex).test(url) ){
-                    chrome.tabs.sendMessage(tabId,{checkRuleResponse:true})
+
+                let regex=obj.target_request_url
+                const methods=[...obj.target_request_method]
+                if(new RegExp(regex).test(url) && methods.includes(dets.method) ){
+                    chrome.tabs.query({audible:false},tabs=>{
+                        let exists=tabs.filter(tab=>tab.id==tabId)
+                        if(exists && exists[0]){
+                            chrome.tabs.sendMessage(tabId,{checkRuleResponse:true})
+                        }
+                        
+                    })
+                    
                 }
             })
         }
     })
-},
-    {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+}
+
 
 const getRules=()=>{
     return new Promise(async(resolve, reject) => {

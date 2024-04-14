@@ -1,11 +1,33 @@
 let received_tab_action=false
+
+
 chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
+    console.log(request);
     if(request=='start sales'){
         sendResponse('starting sales')
         beginSalesHarvest()
     }
+    if(request=='ready?'){
+        sendResponse('I am ')
+    }
+    if(request=='check result'){
+        sendResponse('Checking')
+        
+    }
+    if(request.returnProfile){
+        sendResponse('Checking')
+        const profileId=request.returnProfile
+        checkProfile(profileId)
+        
+    }
+    if(request.returnCompany){
+        sendResponse('Checking')
+        const companyId=request.returnCompany
+        checkCompany(companyId)
+        
+    }
     if(request.checkRuleResponse){
-        sendResponse("checking responses")
+        // sendResponse("checking responses")
         // let url=request.checkRuleResponse
         let ruleResponses=localStorage.getItem('ruleResponses')?JSON.parse(localStorage.getItem('ruleResponses')):[]
         localStorage.setItem('ruleResponses', JSON.stringify([]));
@@ -17,21 +39,7 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
         let allReturned=JSON.parse(localStorage.getItem('newToBeReturned'))
         chrome.runtime.sendMessage({recipeResult:allReturned})
     }
-    if(request==='ready?'){
-        sendResponse('ready')
-    }
-    if(request=='checkSS'){
-        if(isRunning===true){
-            sendResponse('still running')
-        }else{
-            sendResponse('done running') 
-        }
-    }
-    if(request.SNHeaders){
-        sendResponse('setting SN headers')
-        // console.log('setting SN headers');
-        localStorage.setItem("SNHeaders",JSON.stringify(request.SNHeaders))
-    }
+   
     if(request.resetLimit){
         console.log(request);
         sendResponse('setting tabLimit')
@@ -143,6 +151,30 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
         }
     }
 })
+
+const checkCompany=(compId)=>{
+    let returned=[...JSON.parse(localStorage.getItem('newToBeReturned'))]
+    console.log(compId);
+    console.log('previousAllReturned',returned);
+    returned=returned.filter(item=>item.profile==compId)
+    
+    localStorage.setItem('newToBeReturned',JSON.stringify([]))
+    chrome.runtime.sendMessage({companyAnswer:returned})
+    
+    
+    
+    
+   
+}
+
+const checkProfile=(profId)=>{
+    let returned=[...JSON.parse(localStorage.getItem('newToBeReturned'))]
+    returned=returned.filter(item=>item.profile==profId)
+
+    localStorage.setItem('newToBeReturned',JSON.stringify([]))
+    chrome.runtime.sendMessage({profileAnswer:returned})
+
+}
 
 const beginSalesHarvest=async()=>{
    

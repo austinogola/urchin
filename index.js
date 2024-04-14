@@ -1,11 +1,5 @@
 
-const sleep=(ms)=>{
-    return new Promise(async(resolve, reject) => {
-        setTimeout(() => {
-            resolve ('DONE')
-        }, ms);
-    })
-}
+
 
 const addParsed=async(data)=>{
     let ruleResponses=localStorage.getItem('ruleResponses')?JSON.parse(localStorage.getItem('ruleResponses')):[]
@@ -25,14 +19,13 @@ const handleTabRules=(url,interceptedArr,limit,tabRuleObj,response)=>{
         if(Object.keys(tabRuleObj)[0]){
             const {rules,objectId,name,webhook_destination}=tabRuleObj
             const allIntercepted=JSON.parse(localStorage.getItem('allIntercepted'))
-            console.log(limit);
 
             let match=false
 
             if(interceptedArr.length<limit){
                 if(rules){
-                    rules.forEach(async ruleUrl=>{
-                        if(new RegExp(ruleUrl).test(url)){
+                    rules.forEach(async ruleObj=>{
+                        if(new RegExp(ruleObj.request).test(url)){
                             match=true
                         } 
                     })
@@ -118,24 +111,7 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
 
     var XHR = XMLHttpRequest.prototype;
     let WIND=window;
-    // let tRO=st.getItem('tabRuleObj')
-    
-    // let uTBM=st.getItem('urlsToBeMade')
-    // let urlsToBeMade=uTBM=='undefined'?[]:JSON.parse(uTBM)
-
-    // let uTBR=st.getItem('urlsToBeReturned')
-    // let urlsToBeReturned=uTBR=='undefined'?[]:JSON.parse(uTBR)
-    
-    // let sUTBM=st.getItem('salesUrlToBeMade')
-    // let salesUrlToBeMade=sUTBM=='undefined'?[]:JSON.parse(sUTBM)
-
-    // let sUTBR=st.getItem('salesUrlsToBeReturned')
-    // let salesUrlsToBeReturned=sUTBR=='undefined'?[]:JSON.parse(sUTBR)
-
-    // let snH=st.getItem('SNHeaders')
-    // let SNHeaders=snH=='undefined'?[]:JSON.parse(snH)
-
-    // let jtoken=st.getItem('jtoken')
+   
     
    
 
@@ -144,9 +120,7 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
     let jtoken=st.getItem('jtoken')
 
     let tabRuleObj=JSON.parse(st.getItem('tabRuleObj'))
-
-    // const urlsToBeMade=JSON.parse(st.getItem('urlsToBeMade'))
-    // const urlsToBeReturned=JSON.parse(st.getItem('urlsToBeReturned'))
+    
 
     const {rules,objectId,name,webhook_destination}=tabRuleObj
     const tabLimit=localStorage.getItem('tabLimit')
@@ -159,8 +133,7 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
     let normRules=JSON.parse(st.getItem('normRules'))
     
     
-
-    // console.log(rules);
+    
 
     var originalFetch = window.fetch
     var send = XHR.send;
@@ -175,40 +148,6 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
         }
         
         let match=false
-        if(rules){
-            rules.forEach(async ruleUrl=>{
-                if(new RegExp(ruleUrl).test(url)){
-                    match=true
-                } 
-            })
-        }
-        if(match){
-           
-            if(tabLimit>0){
-                // originalFetch.apply(this, arguments).then(async res=>{
-                //     let response=await res.json()
-                //     let interceptObj={
-                //         objectId,
-                //         name,
-                //         response,
-                //         url,
-                //         webhook_destination,
-                //         timestamp :new Date().getTime()
-                //     }
-                //     let prevInterceptArr=JSON.parse(st.getItem('interceptArr'))
-                //     let sentIntercepts=JSON.parse(localStorage.getItem('sentIntercepted'))
-                //     prevInterceptArr=prevInterceptArr.filter(item=>!(sentIntercepts.includes(item.timestamp)))
-                //     prevInterceptArr.push(interceptObj)
-                //     st.setItem('interceptArr',JSON.stringify(prevInterceptArr))
-                //     console.log('Match response registered');
-                //     console.log('new limit',tabLimit);
-                //     st.setItem('tabLimit',tabLimit)
-                // })
-                return
-            }
-            
-        }
-        
 
         return originalFetch.apply(this, arguments);
     }
@@ -256,17 +195,17 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
                 })
             }
 
-            let prevInterceptArr=JSON.parse(st.getItem('interceptedArr'))
-            console.log(prevInterceptArr);
+            let prevInterceptArr=st.getItem('interceptedArr')?JSON.parse(st.getItem('interceptedArr')):null
             let ans=await handleTabRules(url,prevInterceptArr,parseInt(tabLimit),tabRuleObj,response)
             
             if(!newToBeMadeChecked){
                 
                     if(url.toLowerCase().includes('voyager')){
                         newToBeMadeChecked=true
+                        let fullReturned=[]
                         newToBeMade.forEach(obj=>{
                             let URL=obj.url
-                            const {destination,label,objectId}=obj
+                            const {destination,label,objectId,profile}=obj
                             var mlr = new XMLHttpRequest();
                             mlr.onreadystatechange = function() {
                                 if (mlr.readyState === XMLHttpRequest.DONE) {
@@ -277,11 +216,11 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
                                         response:mlr.responseText,
                                         destination,
                                         label,
-                                        objectId
+                                        objectId,
+                                        profile
                                     }
-                                    let newToBeReturned=JSON.parse(st.getItem('newToBeReturned'))
+                                    let newToBeReturned=JSON.parse(localStorage.getItem('newToBeReturned'))
                                     newToBeReturned.push(toBeReturnedObj)
-                                    console.log(newToBeReturned);
                                     localStorage.setItem("newToBeReturned",JSON.stringify(newToBeReturned))
                                  
                                 }

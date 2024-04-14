@@ -1,15 +1,31 @@
 let userId, state, autoState, taskId
-let AUTOS_FREQ,AUTOS_SIZE
+let AUTOS_FREQ,AUTOS_SIZE,AUTOS_ENABLED
+
+let currentWindows=[]
+chrome.windows.getAll(allWins=>{
+    currentWindows=allWins.map(item=>item.id)
+})
+
+
+setInterval(() => {
+    if(!tabsRunning && !recipesRunning){
+        console.log('Checking windows');
+        chrome.windows.getAll(allWins=>{
+            allWins.forEach(item=>{
+                if(!currentWindows.includes(item.id)){
+                    chrome.windows.remove(item.id)
+                }
+            })
+        })   
+    }
+}, 3600000);
+
+  
 
 const getTabs=(test)=>{
     return new Promise(async(resolve,reject)=>{
             let autosUri
-            // if(test){
-            //     autosUri=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs?pageSize=${5}&where=userID%3D'${userId}'`
-
-            // }else{
-            //     autosUri=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs?pageSize=${AUTOS_SIZE}&where=userID%3D'${userId}'%20AND%20complete%20%3D%20false&sortBy=%60created%60%20desc`
-            // }
+            
             const tabsParams=new URLSearchParams({
                 pageSize:test?100:AUTOS_SIZE,
                 where:test?`userID='${userId}'`:
@@ -43,9 +59,11 @@ const getTabs=(test)=>{
 
 }
 const initTabs=async()=>{
-    console.log('Checking tabs');
-   
-    if(!tabsRunning && !recipesRunning){
+    // console.log('Tab time');
+    // console.log('tabsRunning is',tabsRunning);
+    // console.log('recipesRunning is',recipesRunning);
+    // console.log((!tabsRunning && !recipesRunning));
+    if((!tabsRunning && !recipesRunning)){
         chrome.storage.local.get(['autoState','state'],async res=>{
             state=res.state
             autoState=res.autoState
@@ -60,6 +78,8 @@ const initTabs=async()=>{
             }
             
         })
+    }else{
+            
     }
     
     
@@ -198,18 +218,21 @@ const updateTab=async(id)=>{
     
 
 }
+
 let tabsRunning=false
 chrome.storage.local.set({tabRuleObj:{}})
 const runTabs=(arr)=>{
     return new Promise(async(resolve, reject) => {
         chrome.storage.local.set({normRules:[]})
-        if(Array.isArray(arr)){
-            for (let i = 0; i < arr.length; i++) {
-                const tabObj = arr[i];
+
+        const runSingleTab=async(tabObj)=>{
+            return new Promise(async(resolve, reject) => {
                 if(Object.keys(tabObj)[0]){
+                    console.log('Running tab',tabObj);
                     tabsRunning=true
                     const {rules,objectId,name,actions,webhook_destination,
                         active_window,remove_window}=tabObj
+
                     
                     let parsedAction=await parseAction(actions)
                     console.log(parsedAction);
@@ -217,35 +240,60 @@ const runTabs=(arr)=>{
                     chrome.storage.local.set({tabRuleObj})
                     chrome.storage.local.set({tabLimit:parsedAction.limit})
                     chrome.storage.local.set({interceptedArr:[]})
-                    // chrome.storage.local.set({listenToSales:false})
-                    // await unregisterAllDynamicScripts()
-                    // await chrome.scripting.registerContentScripts([{
-                    //     id: tabObj.objectId,
-                    //     js: ["tabInject.js"],
-                    //     matches: ["<all_urls>"],
-                    //     runAt: "document_start"
-                    // }])
+                    
+                    chrome.webRequest.onCompleted.removeListener(normRuleChecker)
                     chrome.webRequest.onCompleted.addListener(tabMatch,{urls:["<all_urls>"]},["responseHeaders","extraHeaders"])
                     let newTabObj=await openNewTab(tabObj.target_page,true,active_window)
                     let newTab=newTabObj.tabId
                     let newWindow=newTabObj.windowId
+                    chrome.windows.onRemoved.addListener((windowId)=>{
+                        if(windowId==newWindow){
+                          // tabsRunning=false
+                          // recipesRunning=false
+                          resolve('CLOSED')
+                        }
+                      })
                     
                     parsedAction.tabId=newTab
                     let cR=await cyclicRunTab(parsedAction,newTab)
                     console.log(cR);
                     tabRuleObj={}
                     chrome.storage.local.set({tabRuleObj})
+                    chrome.webRequest.onCompleted.addListener(normRuleChecker,
+                        {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
                     if(!(remove_window===false)){
-                        await sleep(10000)
+                        await sleep(1000)
                         chrome.webRequest.onCompleted.removeListener(tabMatch)
+                        await sleep(1000)
                         // await unregisterAllDynamicScripts()
                         chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
                     }
                     updateTab(objectId)
+                    resolve('FINN')
+                }
+            })
+        }
+        if(Array.isArray(arr)){
+        
+            while(arr[0]){
+                
+                let tabObj=arr.shift()
+                if(Object.keys(tabObj).length>0){
+                    tabsRunning=true
+                    let tabVal=await runSingleTab(tabObj)
+                    const randomInteger = Math.floor(Math.random() * 6) + 5
+                    await sleep(randomInteger*1000)
+                }else{
+                    console.log('Empty object');
                 }
                 
             }
             tabsRunning=false
+            console.log('Finished');
+
+            
+            
+            
             chrome.storage.local.set({normRules:normRules})
 
         }else{

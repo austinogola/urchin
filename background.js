@@ -4,11 +4,20 @@ importScripts(
     "./handlers/control.js",
     "./handlers/rules.js",
     "./handlers/actions.js",
-    "./handlers/recipes.js")
+    "./handlers/recipes.js",
+    "./handlers/formatters.js"
+)
+
     
 
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+    if(request.profileAnswer){
+      
+    }
+    else if(request.companyAnswer){
+       
+    }
     if(request.message){
         console.log(request);
     }
@@ -33,36 +42,7 @@ chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
     if(request.newSalesRecipe){
 
     }
-    if(request.recipes){
-        return
-        chrome.webRequest.onCompleted.removeListener(resultCheckers)
-        console.log(request);
-        toBeMadeLen=0
-        salesToBeMadeLen=0
-        salesUrlToBeMade=[]
-        urlsToBeMade=[]
-        const {recipes,type}=request
-
-        await unregisterAllDynamicScripts()
-
-        sendRecipes(recipes).then(sendingResult=>{
-            console.log(sendingResult);
-        })
-        
-        await sleep(5000)
-        chrome.tabs.remove(sender.tab.id)
-        await sleep(5000)
-        if(recipesArr[0]){
-            let nextRecipe=recipesArr.shift()
-            chrome.webRequest.onCompleted.addListener(resultCheckers,
-                {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
-            runOneRecipe(nextRecipe)
-        }else{
-            recipesRunning=false
-        }
-        
-        
-    }
+    
     if(request.salesRecipe){
         return
         chrome.webRequest.onCompleted.removeListener(resultCheckers)
@@ -168,13 +148,15 @@ const initiateExtension=async(action)=>{
 
             console.log('Recipe frequency',RECIPE_FREQ);
             console.log('Tabs frequency',AUTOS_FREQ);
+
+            await unregisterAllDynamicScripts()
             
             chrome.alarms.clearAll(()=>{
                 setNormalRules()
                 setRecipes()
                 // startRecipes()
                 setTabs()
-                // setSettings()
+                setSettings()
 
                 // initTabs()
             })
@@ -195,5 +177,8 @@ const initiateExtension=async(action)=>{
     })
     
 }
+const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
+chrome.runtime.onStartup.addListener(keepAlive);
+keepAlive();
 
 initiateExtension()
