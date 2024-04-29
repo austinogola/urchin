@@ -5,13 +5,17 @@ importScripts(
     "./handlers/rules.js",
     "./handlers/actions.js",
     "./handlers/recipes.js",
-    "./handlers/formatters.js"
+    "./handlers/formatters.js",
+    './handlers/scrape.js'
 )
 
     
 
 
 chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
+    if(request.scrapeResult){
+
+    }
     if(request.profileAnswer){
       
     }
@@ -175,6 +179,9 @@ const initiateExtension=async(action)=>{
         //     setSettings() 
         // }
     })
+    .catch(err=>{
+        console.log('Network error')
+       })
     
 }
 const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);

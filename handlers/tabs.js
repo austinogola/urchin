@@ -7,18 +7,18 @@ chrome.windows.getAll(allWins=>{
 })
 
 
-setInterval(() => {
-    if(!tabsRunning && !recipesRunning){
-        console.log('Checking windows');
-        chrome.windows.getAll(allWins=>{
-            allWins.forEach(item=>{
-                if(!currentWindows.includes(item.id)){
-                    chrome.windows.remove(item.id)
-                }
-            })
-        })   
-    }
-}, 3600000);
+// setInterval(() => {
+//     if(!tabsRunning && !recipesRunning){
+//         console.log('Checking windows');
+//         chrome.windows.getAll(allWins=>{
+//             allWins.forEach(item=>{
+//                 if(!currentWindows.includes(item.id)){
+//                     chrome.windows.remove(item.id)
+//                 }
+//             })
+//         })   
+//     }
+// }, 3600000);
 
   
 
@@ -197,7 +197,6 @@ const updateTab=async(id)=>{
     let ob={
         complete:true
     }
-    // let updateUrl=`https://eu-api.backendless.com/F1907ACC-D32B-5EA1-FFA2-16B5AC9AC700/E7D47F5F-7E77-4E8D-B6CE-E2E7A9C6C1C2/data/tabs/${id}`
     const updateTabParams=new URLSearchParams({
         pageSize:AUTOS_SIZE,
         where:`userID='${userId}' AND complete=false`,
@@ -215,6 +214,9 @@ const updateTab=async(id)=>{
         },
         body:JSON.stringify(ob)
     })
+    .catch(err=>{
+        console.log(err.message)
+       })
     
 
 }
@@ -261,12 +263,13 @@ const runTabs=(arr)=>{
                     chrome.storage.local.set({tabRuleObj})
                     chrome.webRequest.onCompleted.addListener(normRuleChecker,
                         {urls:["*://*.linkedin.com/*/*"]},["responseHeaders","extraHeaders"])
+                        
                     if(!(remove_window===false)){
                         await sleep(1000)
                         chrome.webRequest.onCompleted.removeListener(tabMatch)
                         await sleep(1000)
                         // await unregisterAllDynamicScripts()
-                        chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
+                        // chrome.windows.remove(newWindow,function ignore_error() { void chrome.runtime.lastError; })
                     }
                     updateTab(objectId)
                     resolve('FINN')
@@ -290,6 +293,9 @@ const runTabs=(arr)=>{
             }
             tabsRunning=false
             console.log('Finished');
+            if(openWindow){
+                chrome.windows.remove(openWindow,function ignore_error() { void chrome.runtime.lastError; })
+            }
 
             
             

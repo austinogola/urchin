@@ -28,7 +28,6 @@ chrome.storage.local.get(['interceptedArr','tabRuleObj','tabLimit','normRules',
         console.log('interceptedArr',interceptedArr);
         
         localStorage.setItem('newToBeMade',JSON.stringify(newToBeMade))
-        console.log('newToBeMade',newToBeMade);
         localStorage.setItem('newToBeReturned',JSON.stringify([]))
         localStorage.setItem('jtoken',jtoken)
         localStorage.setItem('listenToSales',listenToSales)
@@ -40,6 +39,8 @@ chrome.storage.local.get(['interceptedArr','tabRuleObj','tabLimit','normRules',
         localStorage.setItem('salesDetails',JSON.stringify(salesDetails))
 
         localStorage.setItem("normRules",JSON.stringify(normRules))
+
+        // localStorage.setItem('ruleResponses',JSON.stringify([]))
 
         s.onload = function() {
             // this.remove();

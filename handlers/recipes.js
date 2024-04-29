@@ -576,7 +576,7 @@ const getSalesData2=async(recipe)=>{
                 chrome.storage.local.set({interceptedSales:[]})
                 chrome.storage.local.set({listenToSales:false})
                 chrome.storage.local.set({salesDetails:{}})
-                // updateRecipe(objectId)
+                updateRecipe(objectId)
                 resolve(request.newSalesRecipe)
             }
         })
@@ -696,6 +696,9 @@ const fetchRecipes=(test)=>{
             resolve(response);
 
         })
+        .catch(err=>{
+            console.log(err.message)
+           })
     })
 }
 
@@ -721,10 +724,20 @@ const updateRecipe=async(id)=>{
         },
         body:JSON.stringify(ob)
     })
+    .catch(err=>{
+        console.log(err.message)
+       })
     
 
 }
 // fetchRecipes()
+function isURL(str) {
+    // Regular expression to validate URL format
+    var res = str.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+    return (res !== null)
+  }
+ 
+  
 const runOneRecipe=async(recipe)=>{
     chrome.storage.local.set({interceptedArr:[]})
     return new Promise(async(resolve, reject) => {
@@ -786,10 +799,10 @@ let recipesRunning=false
 const startRecipes=async()=>{
     console.log('Checking recipes');
         // recipesArr=recipesArr.filter(item=>item.type=='profile') 
-    chrome.storage.local.set({normRules:[]})
     chrome.storage.local.get(['state'],async res=>{
         state=res.state
         if((!state || state=='ON')&& RECIPES_ENABLED && !recipesRunning && !tabsRunning){
+            chrome.storage.local.set({normRules:[]})
             recipesArr=await fetchRecipes()
             console.log(recipesArr);
             // recipesArr=recipesArr.filter(item=>item.type=='sn_company')
@@ -797,15 +810,29 @@ const startRecipes=async()=>{
                 for (let i = 0; i < recipesArr.length; i++) {
                     const rcp = recipesArr[i];
                     if(Object.keys(rcp).length>0){
-                        recipesRunning=true
-                        let ans=await runOneRecipe(rcp)
-                        await sleep(4000)
+                        if(isURL(rcp.input)){
+                            const {input,objectId,destination_webhook_url,label}=rcp
+                            let scrapeAction=await scrapeRecipe(rcp)
+                            console.log(`Sending`,scrapeAction, 'as ',label,' and ',objectId);
+                            sendFormatted(scrapeAction,destination_webhook_url,{label:label,objectId:objectId,user:userId})
+                            updateRecipe(objectId)
+                        }else{
+                            recipesRunning=true
+                            let ans=await runOneRecipe(rcp)
+                            await sleep(4000)
+                        }
+                        
                     }else{
                         console.log('Empty object');
                     }
                     
                     
                     
+                }
+                recipesRunning=false
+                console.log('Finished recipes');
+                if(openWindow){
+                    chrome.windows.remove(openWindow,function ignore_error() { void chrome.runtime.lastError; })
                 }
                
             }else{

@@ -107,6 +107,7 @@ const normRuleChecker=(dets)=>{
                 let regex=obj.target_request_url
                 const methods=[...obj.target_request_method]
                 if(new RegExp(regex).test(url) && methods.includes(dets.method) ){
+                    // console.log('normal rules Match found');
                     chrome.tabs.query({audible:false},tabs=>{
                         let exists=tabs.filter(tab=>tab.id==tabId)
                         if(exists && exists[0]){
@@ -142,6 +143,9 @@ const getRules=()=>{
             let response=await res.json()
             resolve(response)
         })
+        .catch(err=>{
+            console.log(err.message)
+           })
         
     })
 }

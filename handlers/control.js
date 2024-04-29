@@ -1,37 +1,52 @@
 
+let openWindow
 const openNewTab=(url,wait,active_window,stru_type)=>{
     return new Promise((resolve, reject) => {
-      
-      chrome.windows.create({
-        focused:active_window,
-        type:'normal',
-        height:900,
-        width:1600,
-        url:url
-    },async(window)=>{
-        let ourTabId=window.tabs[0].id
-        if(wait){
-          chrome.tabs.onUpdated.addListener(function (tabId, info) {
-              if (info.status == 'complete') {
-                if(ourTabId==tabId){
-                  resolve({tabId:tabId,windowId:window.id})
-                }
-              }
-            });
-      }else{
-        resolve({tabId:ourTabId,windowId:window.id})
-      }
-      chrome.windows.onRemoved.addListener((windowId)=>{
-        if(windowId==window.id){
-          // tabsRunning=false
-          // recipesRunning=false
+      let ourTabId
+      const listenForLoad=(tabId, info)=>{
+        if (info.status == 'complete') {
+          if(ourTabId && (ourTabId==tabId)){
+            resolve({tabId:tabId,windowId:openWindow})
+          }
         }
-      })
-        
-        
-        // chrome.windows.update(window_Id,{state:"fullscreen"})
+      }
+      if(openWindow){
+        chrome.tabs.onUpdated.addListener(listenForLoad);
+        chrome.tabs.create({active:true,url,windowId:openWindow},(tab)=>{
+          ourTabId=tab.id
+        })
+      }else{
 
-    })
+        chrome.windows.create({
+          focused:true,
+          type:'normal',
+          height:900,
+          width:1600,
+          url:url
+      },async(window)=>{
+          ourTabId=window.tabs[0].id
+          openWindow=window.id
+          if(wait){
+            chrome.tabs.onUpdated.addListener(listenForLoad);
+        }else{
+          resolve({tabId:ourTabId,windowId:openWindow})
+        }
+        chrome.windows.onRemoved.addListener((windowId)=>{
+          if(windowId==openWindow){
+            openWindow=false
+            // tabsRunning=false
+            // recipesRunning=false
+          }
+        })
+          
+          
+          // chrome.windows.update(window_Id,{state:"fullscreen"})
+  
+      })
+
+      }
+      
+      
        
     })
 }

@@ -143,7 +143,7 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
         
         let url =typeof(callback)=='string'?callback:callback.url
         
-        if(url.includes('chrome-extension://')){
+        if(url && url.includes('chrome-extension://')){
             return
         }
         
@@ -165,7 +165,7 @@ const handleRecipes=(url,jtoken,toBeMade,allMade)=>{
             const {responseURL,responseType,response}=this
             let url=responseURL
 
-            if(normRules[0]){
+            if(normRules[0] && Object.keys(normRules[0]).length>0){
                 normRules.forEach(async obj => {
                     let regex=obj.target_request_url
                     

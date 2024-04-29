@@ -2,7 +2,10 @@ let received_tab_action=false
 
 
 chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
-    console.log(request);
+    if(request==='scrape whole'){
+        const htmlContent = document.documentElement.outerHTML;
+        chrome.runtime.sendMessage({scrapeResult:htmlContent})
+    }
     if(request=='start sales'){
         sendResponse('starting sales')
         beginSalesHarvest()
@@ -29,9 +32,7 @@ chrome.runtime.onMessage.addListener(async(request,sender,sendResponse)=>{
     if(request.checkRuleResponse){
         // sendResponse("checking responses")
         // let url=request.checkRuleResponse
-        let ruleResponses=localStorage.getItem('ruleResponses')?JSON.parse(localStorage.getItem('ruleResponses')):[]
-        localStorage.setItem('ruleResponses', JSON.stringify([]));
-        chrome.runtime.sendMessage({ruleResponses})
+        clearNormalRuleResponses()
         // console.log(ruleResponses);
 
     }
@@ -166,6 +167,13 @@ const checkCompany=(compId)=>{
     
    
 }
+
+const clearNormalRuleResponses=()=>{
+    let ruleResponses=localStorage.getItem('ruleResponses')?JSON.parse(localStorage.getItem('ruleResponses')):[]
+    localStorage.setItem('ruleResponses', JSON.stringify([]));
+    chrome.runtime.sendMessage({ruleResponses})
+}
+clearNormalRuleResponses()
 
 const checkProfile=(profId)=>{
     let returned=[...JSON.parse(localStorage.getItem('newToBeReturned'))]
@@ -350,6 +358,7 @@ const runString=async(action_array,limit)=>{
     return new Promise(async(resolve, reject) => {
         for (let i = 0; i < action_array.length; i++) {
             if(action_array[i]=='reset_rules_limit'){
+                console.log('Resetting limit');
                 chrome.runtime.sendMessage({message:`Resetting tab Limit to ${limit}`})
                 localStorage.setItem('interceptedArr',JSON.stringify([]))
             }
@@ -357,32 +366,54 @@ const runString=async(action_array,limit)=>{
                 const itemArr = action_array[i].split(' ')
                 // console.log(itemArr);
                 if(itemArr.includes('wait')){
+                    console.log('Waiting');
                     let length=parseFloat(itemArr[1])
                     // console.log(`Waiting ${length}`);
                     await sleep(length*1000)
                     // console.log('waited')
                 }
                 else if(itemArr.includes('click')){
+
                     let target=itemArr[1]
                     let targ=await loadSelector(target)
                     // console.log('clicking', targ);
                     if(targ!=null){
-                        targ.click()
+                        setTimeout(()=>{
+                            targ.click()
+                        },500)
+                        
                     }
                     
                     
                 }
                 else if(itemArr.includes('scroll')){
-                    let target=itemArr[1]
-                    let depth=parseInt(itemArr[2])
+                    let itemLen=itemArr.length
+
+                    let target
+                    let depth
+                    if(itemLen===2){
+                        target='window'
+                        depth=parseInt(itemArr[1])
+                    }else{
+                        target=itemArr[1]
+                        depth=parseInt(itemArr[2])
+                    }
+                    
+                    
+
                     if(target=='window'){
-                        // console.log('Scrolling window');
-                        window.scrollBy({top:depth,behavior:'smooth'})
+                        console.log('Scrolling window');
+                        setTimeout(()=>{
+                            window.scrollBy({top:depth,behavior:'smooth'})
+                        },500)
+                       
                     }else{
                         let targ=await loadSelector(target)
-                        // console.log('Scrolling',null);
+                        console.log('Scrolling',targ);
                         if(targ!=null){
-                            targ.scrollBy({top:depth,behavior:'smooth'})
+                            setTimeout(()=>{
+                                targ.scrollBy({top:depth,behavior:'smooth'})
+                            },500)
                         }
                         
                     }
