@@ -94,13 +94,15 @@ const getAndSendCompany2=(recipe)=>{
             const waitMessage=async(request, sender, sendResponse)=>{ 
                 if(request.profileAnswer || request.companyAnswer){
                     const {companyAnswer}=request
+                    chrome.storage.local.set({normRules:normRules})
                     chrome.webRequest.onCompleted.removeListener(checkCompUpdata)
                     chrome.runtime.onMessage.removeListener(waitMessage)
+                    
                     
                     formatCompany(companyAnswer)
                     await sleep(4000)
                     
-                    chrome.tabs.remove(sender.tab.id)
+                    // chrome.tabs.remove(sender.tab.id)
                     resolve('DONE')
                     // if(profileAnswer[0]){
                     //     let formattedProfile=await formatProfile(profileAnswer)
@@ -114,6 +116,7 @@ const getAndSendCompany2=(recipe)=>{
             chrome.runtime.onMessage.addListener(waitMessage)
 
             chrome.storage.local.set({newToBeMade})
+            chrome.storage.local.set({normRules:[]})
 
             // listenToSales=true
             // chrome.storage.local.set({listenToSales:listenToSales})
@@ -159,12 +162,13 @@ const getAndSendProfile2=(recipe)=>{
             const waitMessage=async(request, sender, sendResponse)=>{ 
                 if(request.profileAnswer || request.companyAnswer){
                     const {profileAnswer}=request
+                    chrome.storage.local.set({normRules:normRules})
                     chrome.webRequest.onCompleted.removeListener(checkProfUpdata)
                     chrome.runtime.onMessage.removeListener(waitMessage)
                     formatProfile(profileAnswer)
                     await sleep(5000)
                     
-                    chrome.tabs.remove(sender.tab.id)
+                    // chrome.tabs.remove(sender.tab.id)
                     resolve('DONE')
                     // if(profileAnswer[0]){
                     //     let formattedProfile=await formatProfile(profileAnswer)
@@ -179,6 +183,7 @@ const getAndSendProfile2=(recipe)=>{
             chrome.runtime.onMessage.addListener(waitMessage)
 
             chrome.storage.local.set({newToBeMade})
+            chrome.storage.local.set({normRules:[]})
 
             // listenToSales=true
             // chrome.storage.local.set({listenToSales:listenToSales})
@@ -569,19 +574,22 @@ const getSalesData2=async(recipe)=>{
         const {settings,input,label,destination_webhook_url,type,objectId}=recipe
         chrome.runtime.onMessage.addListener(async(request, sender, sendResponse)=>{
             if(request.newSalesRecipe){
-                await sleep(7000)
-
-                chrome.tabs.remove(sender.tab.id)
+                // await sleep(2000)
+                console.log(request);
+                // chrome.tabs.remove(sender.tab.id)
                 chrome.storage.local.set({newToBeMade:[]})
                 chrome.storage.local.set({interceptedSales:[]})
                 chrome.storage.local.set({listenToSales:false})
                 chrome.storage.local.set({salesDetails:{}})
-                updateRecipe(objectId)
+                chrome.storage.local.set({normRules:normRules})
+                sendSalesRecipe(request.newSalesRecipe)
+                // updateRecipe(objectId)
                 resolve(request.newSalesRecipe)
             }
         })
         chrome.storage.local.set({interceptedSales:[]})
         chrome.storage.local.set({listenToSales:true})
+        chrome.storage.local.set({normRules:[]})
         chrome.storage.local.set({salesDetails:{
            label,
            destination:destination_webhook_url,
@@ -590,7 +598,7 @@ const getSalesData2=async(recipe)=>{
          }})
          let salesHomeUrl=`https://www.linkedin.com/sales/company/${input}`
         let newTabObj=await openNewTab(salesHomeUrl,true,true)
-        await sleep(5000)
+        // await sleep(5000)
         chrome.tabs.sendMessage(newTabObj.tabId,'start sales')
     })
     
@@ -676,7 +684,7 @@ const fetchRecipes=(test)=>{
     return new Promise((resolve, reject) => {
        
         const recipeParams=new URLSearchParams({
-            pageSize:test?5:RECIPE_SIZE,
+            pageSize:test?30:RECIPE_SIZE,
             where:test?`userID='${userId}'`:
             `userID='${userId}' AND complete=false AND paused!= true`,
             user:userId,
@@ -769,7 +777,7 @@ const runOneRecipe=async(recipe)=>{
             //     console.log(sendingResult);
             //     })
             //     resolve(ans)
-                return
+                // return
                 // ans=await getAndSendSales(recipe)
                 
             }
@@ -804,6 +812,7 @@ const startRecipes=async()=>{
         if((!state || state=='ON')&& RECIPES_ENABLED && !recipesRunning && !tabsRunning){
             chrome.storage.local.set({normRules:[]})
             recipesArr=await fetchRecipes()
+            // recipesArr=recipesArr.filter(item=>item.type.includes('s'))
             console.log(recipesArr);
             // recipesArr=recipesArr.filter(item=>item.type=='sn_company')
             if(Array.isArray(recipesArr)){
@@ -813,20 +822,18 @@ const startRecipes=async()=>{
                         if(isURL(rcp.input)){
                             const {input,objectId,destination_webhook_url,label}=rcp
                             let scrapeAction=await scrapeRecipe(rcp)
-                            console.log(`Sending`,scrapeAction, 'as ',label,' and ',objectId);
+                            // console.log(`Sending`,scrapeAction, 'as ',label,' and ',objectId);
                             sendFormatted(scrapeAction,destination_webhook_url,{label:label,objectId:objectId,user:userId})
                             updateRecipe(objectId)
                         }else{
                             recipesRunning=true
                             let ans=await runOneRecipe(rcp)
-                            await sleep(4000)
+                            await sleep(5000)
                         }
                         
                     }else{
                         console.log('Empty object');
                     }
-                    
-                    
                     
                 }
                 recipesRunning=false
@@ -877,10 +884,12 @@ const sendSalesRecipe=(rr)=>{
             }else{
                 message=`Could not send recipe result to ${destination}`
             }
+            console.log(message);
             resolve(message)
             updateRecipe(objectId)
         })
         .catch(()=>{
+            console.log(`Could not send recipe result to ${destination}`);
             resolve(`Could not send recipe result to ${destination}`)
         })
     })

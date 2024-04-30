@@ -146,7 +146,9 @@ const initiateExtension=async(action)=>{
 
             RECIPE_SIZE= recipes_batch_size || 5
             RECIPE_FREQ=recipes_frequency || 5
+         
             RECIPES_ENABLED=recipes_enabled
+            // RECIPES_ENABLED=true
             AUTOS_ENABLED=auto_enabled
             SET_FREQUENCY=settings_frequency
 

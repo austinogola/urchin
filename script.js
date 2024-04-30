@@ -184,10 +184,58 @@ const checkProfile=(profId)=>{
 
 }
 
+const returnInterceptedSales=()=>{
+    let allArray=['hires','openings','employees','alerts','personas']
+    let interceptedSales=JSON.parse(localStorage.getItem('interceptedSales'))
+    const interceptObj={
+        response:{}
+    }
+    allArray.forEach(item=>{
+        let oneObj=interceptedSales.filter(onj=>onj.type==item)[0]
+        if(oneObj){
+            const {response,destination,label,objectId,type}=oneObj
+            interceptObj.response[type]=response
+            interceptObj.destination=destination
+            interceptObj.label=label
+            interceptObj.objectId=objectId
+        }
+        
+    })
+    interceptObj.type='sales'
+    // console.log(interceptObj);
+    localStorage.setItem('interceptedSales',JSON.stringify([]))
+    chrome.runtime.sendMessage({newSalesRecipe:interceptObj})
+}
+
 const beginSalesHarvest=async()=>{
-   
-    let insightBtn=await loadSelector("span:contains(Insight)")
-    insightBtn.click()
+    
+    await new Promise((resolve, reject) => {
+        let times=0
+        let mmInt=setInterval(() => {
+            times+=1
+            console.log('Scrolling');
+            window.scrollBy({top:150,behavior:'smooth'})
+            if(times>=5){
+                clearInterval(mmInt)
+                resolve('DONE')
+            }
+        }, 300);
+    })
+
+    await new Promise((resolve, reject) => {
+        setTimeout(async() => {
+            let insightBtn=await loadSelector("span:contains(Insight)")
+            setTimeout(async() => {
+                console.log(insightBtn);
+                insightBtn.click()
+                console.log('clicking');
+                resolve('DONE')
+            }, 500);
+            
+        }, 500);
+    })
+    
+    
     // return
     // let employeeButton=await loadSelector('button[data-control-name]')
     // console.log(employeeButton);
@@ -198,54 +246,67 @@ const beginSalesHarvest=async()=>{
     //     }, 300);
     // })
     
-    await sleep(1500)
-    let hiresButton=await loadSelector('button[data-control-name="new_hires_tab"]')
+    await sleep(500)
     await new Promise((resolve, reject) => {
-        setTimeout(() => {
-            hiresButton.click()
-            resolve('DONE')
+        setTimeout(async() => {
+            let hiresButton=await loadSelector('button[data-control-name="new_hires_tab"]')
+            setTimeout(async() => {
+                console.log(hiresButton);
+                console.log('clicking');
+                hiresButton.click()
+                resolve('DONE')
+            }, 500);
+            
         }, 500);
     })
-    await sleep(1500)
-    let openingsButton=await loadSelector('button[data-control-name="job_openings_tab"]')
+    
+   
+    await sleep(500)
     await new Promise((resolve, reject) => {
-        setTimeout(() => {
-            openingsButton.click()
-            resolve('DONE')
+        setTimeout(async() => {
+            let openingsButton=await loadSelector('button[data-control-name="job_openings_tab"]')
+            setTimeout(async() => {
+                console.log(openingsButton);
+                console.log('clicking');
+                openingsButton.click()
+                resolve('DONE')
+            }, 500);
+            
         }, 500);
     })
-    await sleep(1500)
-    let personasButton=await loadSelector('button[data-control-name="personas_tab"]')
+   
+    
+    await sleep(500)
     await new Promise((resolve, reject) => {
-        setTimeout(() => {
-            personasButton.click()
-            resolve('DONE')
+        setTimeout(async() => {
+            let personasButton=await loadSelector('button[data-control-name="personas_tab"]')
+            setTimeout(async() => {
+                console.log(personasButton);
+                console.log('clicking');
+                personasButton.click()
+                resolve('DONE')
+            }, 500);
+            
         }, 500);
     })
-    await sleep(1500)
-    let headCountButton=await loadSelector('button[data-control-name="distribution_headcount_tab"]')
+   
+    await sleep(500)
     await new Promise((resolve, reject) => {
-        setTimeout(() => {
-            headCountButton.click()
-            resolve('DONE')
+        setTimeout(async() => {
+            let headCountButton=await loadSelector('button[data-control-name="distribution_headcount_tab"]')
+            setTimeout(async() => {
+                console.log(headCountButton);
+                console.log('clicking');
+                headCountButton.click()
+                resolve('DONE')
+            }, 500);
+            
         }, 500);
     })
-    let allArray=['hires','openings','employees','alerts','personas']
-    let interceptedSales=JSON.parse(localStorage.getItem('interceptedSales'))
-    const interceptObj={
-        response:{}
-    }
-    allArray.forEach(item=>{
-        let oneObj=interceptedSales.filter(onj=>onj.type==item)[0]
-        const {response,destination,label,objectId,type}=oneObj
-        interceptObj.response[type]=response
-        interceptObj.destination=destination
-        interceptObj.label=label
-        interceptObj.objectId=objectId
-    })
-    interceptObj.type='sales'
-    console.log(interceptObj);
-    chrome.runtime.sendMessage({newSalesRecipe:interceptObj})
+    
+    await sleep(500)
+    returnInterceptedSales()
+    
 
 }
 
